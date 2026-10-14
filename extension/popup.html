@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Goodog · Экспорт чата</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="i18n.js" defer></script>
+    <script src="popup.js" defer></script>
+  </head>
+  <body data-phase="idle">
+    <main class="popup">
+      <header class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 28 28" fill="none"><path d="M22 12.5a8.5 8.5 0 0 1-8.5 8.5H7l-4 3V12.5A8.5 8.5 0 0 1 11.5 4H17a8 8 0 0 1 8 8v1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 10h9M9 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </span>
+        <div class="brand-copy"><strong>Goodog</strong><span>CHAT EXPORT</span></div>
+        <span class="local-badge"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m10 2 6 2.5v5c0 4-6 8-6 8s-6-4-6-8v-5L10 2Z" stroke="currentColor" stroke-width="1.5"/><path d="m7 9 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Без прокрутки</span>
+      </header>
+      <label class="language-option" for="ui-language"><span>Язык</span><select id="ui-language"><option value="ru">Русский</option><option value="en">English</option></select></label>
+
+      <section class="intro">
+        <h1>Чат и вложения — в одном архиве</h1>
+        <p>Загрузите все страницы текущей ветки без прокрутки. ZIP сохраняет текст и доступные оригиналы вложений; TXT — только текст, код, ссылки и подписи.</p>
+      </section>
+
+      <button id="wide-action" class="secondary-button wide-action" type="button" disabled>Открыть в широком окне</button>
+      <p class="wide-hint">Для огромных файлов удобнее отдельная вкладка: она остаётся открытой во время обработки.</p>
+
+      <fieldset id="format-options" class="format-options" aria-describedby="format-hint">
+        <legend>Формат сохранения</legend>
+        <div class="format-grid">
+          <label class="format-option" for="format-zip"><input id="format-zip" type="radio" name="format" value="zip" checked /><span><strong>ZIP · чат и файлы</strong><small>Текст и доступные оригиналы вложений</small></span></label>
+          <label class="format-option" for="format-txt"><input id="format-txt" type="radio" name="format" value="txt" /><span><strong>TXT · только текст</strong><small>Без картинок и вложений</small></span></label>
+        </div>
+        <p id="format-hint" class="format-hint">Недоступные вложения будут отмечены в предупреждениях. Полнота истории и полнота файлов показываются отдельно.</p>
+      </fieldset>
+      <p id="permission-note" class="permission-note" role="status" hidden></p>
+
+      <label class="option" for="include-links">
+        <input id="include-links" type="checkbox" checked aria-describedby="option-hint" />
+        <span><strong>Добавлять адреса ссылок</strong><small id="option-hint">Для нового получения чата или сохранения выбранного JSON</small></span>
+      </label>
+
+      <section id="unsupported" class="notice" hidden>
+        <strong>Откройте разговор в ChatGPT</strong>
+        <p id="unsupported-message">Для прямого получения откройте нужный чат на chatgpt.com или chat.openai.com и нажмите значок расширения. Локальный JSON можно открыть ниже.</p>
+        <a class="open-chatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Открыть ChatGPT<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 15 15 5M6 5h9v9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </section>
+
+      <div id="workspace">
+        <section class="status-card" aria-label="Загрузка всего текста текущей ветки ChatGPT">
+          <div class="status-heading"><span id="phase-label">Подключаемся к вкладке</span><span id="format-badge" class="file-badge">.ZIP</span></div>
+          <p id="status-message" class="status-message" role="status" aria-live="polite">Получаем состояние расширения…</p>
+          <div class="count-row"><span id="count-label">Получено сообщений</span><strong id="message-count">0</strong></div>
+          <p id="page-count" class="page-count" hidden></p>
+          <p id="text-only-note" class="text-only-note" hidden></p>
+          <p id="current-format" class="current-format" hidden></p>
+          <section id="archive-status" class="archive-status" aria-label="Вложения ZIP" hidden>
+            <strong id="archive-stage">Подготовка вложений</strong>
+            <p id="archive-count"></p>
+            <p id="archive-coverage" class="archive-coverage" hidden></p>
+          </section>
+          <div id="progress" class="progress-track" hidden aria-hidden="true"><span></span></div>
+          <p id="coverage" class="coverage" hidden></p>
+          <p id="filename" class="filename" hidden></p>
+        </section>
+
+        <p id="keep-open" class="keep-open" hidden>Оставьте исходную вкладку ChatGPT открытой. Прокручивать чат не нужно; это окно можно закрыть.</p>
+        <p id="error" class="error" role="alert" hidden></p>
+        <section id="warnings" class="warnings" hidden aria-label="Замечания к экспорту"><strong>Обратите внимание</strong><ul id="warning-list"></ul></section>
+
+        <div class="actions">
+          <button id="primary-action" class="primary-button" type="button" disabled>
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2v10m-4-4 4 4 4-4M3 13v4h14v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span id="primary-label">Получить чат и вложения в ZIP</span>
+          </button>
+          <button id="cancel-action" class="secondary-button cancel-button" type="button" hidden>Остановить получение</button>
+          <button id="restart-action" class="secondary-button" type="button" hidden>Загрузить все страницы заново</button>
+        </div>
+        <p class="history-note">Полнота истории относится к текущей ветке, а полнота вложений — к найденным в ней файлам. Старые прерванные ответы сохраняются в том виде, в котором они есть в чате.</p>
+      </div>
+
+      <section class="local-import" aria-labelledby="local-heading">
+        <div class="section-heading"><h2 id="local-heading">Из официального экспорта ChatGPT</h2><span class="file-badge">JSON → ZIP / TXT</span></div>
+        <p class="section-copy">Распакуйте экспорт данных ChatGPT и выберите <code>conversations.json</code>. Подходит также JSON одного разговора. ZIP экспорта сначала нужно распаковать.</p>
+        <input id="local-file" type="file" accept=".json,application/json" hidden />
+        <button id="local-open" class="secondary-button" type="button">Открыть JSON из экспорта ChatGPT</button>
+        <div id="local-folder-controls" class="local-folder-controls">
+          <input id="local-folder" type="file" webkitdirectory multiple hidden />
+          <button id="local-folder-open" class="secondary-button" type="button">Выбрать папку экспорта с вложениями</button>
+          <p id="local-folder-status" class="section-copy">Необязательно: выберите распакованную папку официального экспорта. В ZIP попадут только файлы выбранной ветки, которые удастся сопоставить; без папки недоступные вложения будут отмечены.</p>
+        </div>
+        <p id="local-status" class="local-status" role="status" aria-live="polite">Файл обрабатывается только в памяти этой вкладки и никуда не отправляется.</p>
+        <div id="local-selection" class="local-selection" hidden>
+          <label for="local-conversation">Разговор для сохранения</label>
+          <select id="local-conversation"></select>
+          <p id="local-archive" class="local-status" hidden></p>
+          <button id="local-download" class="primary-button" type="button" disabled>Сохранить выбранный чат в ZIP</button>
+        </div>
+        <p id="local-error" class="error" role="alert" hidden></p>
+        <section id="local-warnings" class="warnings" hidden aria-label="Замечания к локальному JSON"><strong>Обратите внимание</strong><ul id="local-warning-list"></ul></section>
+      </section>
+
+      <footer>
+        <p class="privacy-note">Текущая ветка · ZIP или TXT UTF‑8 · обработка на компьютере</p>
+        <p>В ZIP входят доступные файлы; TXT сохраняет только текст. Недоступные вложения не выдаются за сохранённые.</p>
+      </footer>
+    </main>
+  </body>
+</html>

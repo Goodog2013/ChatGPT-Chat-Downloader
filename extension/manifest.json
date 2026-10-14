@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Goodog Chat Export",
+  "version": "3.0.0",
+  "minimum_chrome_version": "116",
+  "description": "Export ChatGPT chats as offline ZIP with original attachments and SHA-256, or TXT. Paginated history, local import. EN / RU.",
+  "permissions": ["activeTab", "scripting", "downloads", "offscreen"],
+  "optional_host_permissions": ["https://*.oaiusercontent.com/*", "https://*.blob.core.windows.net/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "Export chat · ZIP / TXT",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "commands": { "_execute_action": { "suggested_key": { "default": "Ctrl+Shift+Y" } } },
+  "content_security_policy": { "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; connect-src 'self' https://chatgpt.com https://chat.openai.com https://*.oaiusercontent.com https://*.blob.core.windows.net" }
+}
