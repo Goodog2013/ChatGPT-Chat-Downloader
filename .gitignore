@@ -1,0 +1,8 @@
+dist/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+conversations*.json
+logs/
+*.log
