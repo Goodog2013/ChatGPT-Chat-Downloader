@@ -1,7 +1,7 @@
 /* Local conversation-data conversion. No DOM, credentials, network or storage. */
 (() => {
   "use strict";
-  const VERSION = "3.1.0";
+  const VERSION = "3.2.0";
   if (globalThis.GoodogConversationData?.version === VERSION) return;
   const object = value => value && typeof value === "object" && !Array.isArray(value);
   const array = value => Array.isArray(value) ? value : [];

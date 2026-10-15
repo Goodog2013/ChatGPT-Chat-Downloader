@@ -18,9 +18,12 @@
   function create(descriptor, options = {}) {
     if (!descriptor || !Array.isArray(descriptor.messages) || !Array.isArray(descriptor.attachments)) throw new Error("Invalid archive conversation data.");
     if (descriptor.attachments.length > 20000) throw new Error("Too many attachments for one archive.");
-    const writer = globalThis.GoodogZip.createWriter({ maxBytes: MAX_ARCHIVE_BYTES });
+    const shared = options.writer;
+    const prefix = typeof options.prefix === "string" ? options.prefix : "";
+    if (shared && (typeof shared.add !== "function" || !/^chats\/\d+\/$/u.test(prefix))) throw new Error("Invalid HTML-site writer or prefix.");
+    const writer = shared ? { add: (path, blob) => shared.add(prefix + path, blob) } : globalThis.GoodogZip.createWriter({ maxBytes: MAX_ARCHIVE_BYTES });
     const language = options.language === "ru" ? "ru" : "en";
-    const manifest = { schemaVersion: 1, generator: "Goodog Chat Export 3.1.0", exportedAt: descriptor.exportedAt,
+    const manifest = { schemaVersion: 1, generator: "Goodog Chat Export 3.2.0", exportedAt: descriptor.exportedAt,
       scope: descriptor.availableAlternatesCount > 0 ? "current_branch_and_available_alternates" : "current_conversation_branch",
       availableAlternatesCount: descriptor.availableAlternatesCount || 0, historyCoverage: descriptor.coverage || "partial", attachmentCoverage: "unknown",
       limits: { maxArchiveBytes: MAX_ARCHIVE_BYTES, maxFileBytes: MAX_FILE_BYTES }, files: [] };
@@ -43,7 +46,7 @@
       const blob = result.blob;
       if (!(blob instanceof Blob)) entry.error = String(result.error || "File is unavailable.").slice(0, 500);
       else if (blob.size > MAX_FILE_BYTES) entry.error = "File exceeds the 256 MiB per-file browser memory limit.";
-      else if (bytes + blob.size > MAX_ARCHIVE_BYTES - RESERVED_BYTES) entry.error = "Archive exceeds the 1.5 GiB browser memory limit.";
+      else if (bytes + blob.size > MAX_ARCHIVE_BYTES - RESERVED_BYTES || (options.reserveAttachment && !options.reserveAttachment(blob.size))) entry.error = "Archive exceeds the attachment budget. Text and the missing-file report are retained.";
       else {
         const ext = /\.[a-z0-9]{1,10}$/iu.test(entry.name) ? "" : MIME_EXTENSIONS[entry.mime] || "";
         entry.path = `attachments/${String(manifest.files.length + 1).padStart(5, "0")}-${entry.name}${ext}`;
@@ -86,9 +89,9 @@
       await writer.add("chat.md", new Blob(["\uFEFF", options.text || ""], { type: "text/markdown;charset=utf-8" }));
       await writer.add("conversation.json", JSON.stringify(publicData, null, 2));
       await writer.add("manifest.json", JSON.stringify(manifest, null, 2));
-      await writer.add("chat.html", globalThis.GoodogArchiveData.renderHtml(descriptor, manifest));
+      await writer.add("chat.html", globalThis.GoodogArchiveData.renderHtml(descriptor, manifest, { embedded: options.embedded === true }));
       const readme = language === "en" ? [
-        "Goodog Chat Export 3.1.0", "", "Open chat.html to read this conversation offline with Markdown formatting. chat.md contains the Markdown transcript.",
+        "Goodog Chat Export 3.2.0", "", "Open chat.html to read this conversation offline with Markdown formatting. chat.md contains the Markdown transcript.",
         "Markdown attachments have an Open Markdown link in chat.html. HTML previews live in previews/; originals stay in attachments/.",
         "Preview limits: UTF-8 Markdown up to 2 MiB per file, 8 MiB of preview HTML total. The original file is retained when a preview is unavailable.",
         "conversation.json contains visible messages and file references. attachments/ contains original available files.",
@@ -99,7 +102,7 @@
         "Source links remain web links. Their remote pages are not downloaded. Text is not translated.",
         "Browser memory limits: 256 MiB per attachment, 1.5 GiB total ZIP. Larger content is explicitly reported as missing.",
       ] : [
-        "Goodog Chat Export 3.1.0", "", "Откройте chat.html для чтения чата офлайн с оформлением Markdown. chat.md содержит переписку в Markdown.",
+        "Goodog Chat Export 3.2.0", "", "Откройте chat.html для чтения чата офлайн с оформлением Markdown. chat.md содержит переписку в Markdown.",
         "У Markdown-вложений есть ссылка «Открыть Markdown» в chat.html. HTML-просмотр находится в previews/, оригиналы — в attachments/.",
         "Предел просмотра: UTF-8 Markdown до 2 МиБ на файл и суммарно 8 МиБ HTML. При недоступном просмотре оригинал файла сохраняется.",
         "conversation.json содержит видимые сообщения и ссылки на файлы. В attachments/ находятся доступные оригиналы вложений.",
@@ -111,7 +114,7 @@
         "Пределы памяти браузера: 256 МиБ на вложение, 1,5 ГиБ на ZIP. Более крупные файлы явно указаны в отчёте как отсутствующие.",
       ];
       await writer.add("README.txt", new Blob(["\uFEFF", readme.join("\r\n") + "\r\n"], { type: "text/plain;charset=utf-8" }));
-      return { blob: await writer.finish(), archive: status(), manifest };
+      return { blob: shared ? null : await writer.finish(), archive: status(), manifest };
     }
     return { addAttachment, finish, status, descriptor, manifest };
   }

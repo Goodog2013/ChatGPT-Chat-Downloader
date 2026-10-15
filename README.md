@@ -1,101 +1,37 @@
-# ChatGPT Chat Downloader · Goodog Chat Export
+# ChatGPT Chat Downloader · Goodog Chat Export 3.2
 
-[Русский](README.ru.md) · [Download for Windows](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.1.0/GoodogChatExport-Windows-3.1.0.zip)
+[Русский](README.ru.md) · [Download for Windows](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.2.0/GoodogChatExport-Windows-3.2.0.zip)
 
-A local Chrome/Edge extension that saves your current ChatGPT conversation branch as a ZIP with available original attachments, or as a Markdown (.md) file. English is the default; Russian is available in the language selector. Your messages are never translated.
-
-## Markdown and HTML
-
-V3.1 replaces TXT with Markdown. `chat.md` preserves the transcript with message headings and separators. `chat.html` renders headings, lists, tables, quotes, links and fenced code blocks. Markdown attachments have an **Open Markdown** link to a local HTML preview in `previews/`; originals stay in `attachments/`. Preview limits: UTF-8 files up to 2 MiB each and 8 MiB of generated HTML per archive. When a preview is unavailable, the original remains available. Messages longer than 2,097,152 characters are shown literally, retaining the text. Raw HTML is escaped and remote images are not loaded.
+A local Windows Chrome/Edge extension for ChatGPT conversation ZIP/Markdown export, ZIP/JSON import and a browsable offline HTML archive. English is the default language; Russian is available in the selector. Message content is never translated.
 
 ## Install or update
 
-1. [Download GoodogChatExport-Windows-3.1.0.zip](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.1.0/GoodogChatExport-Windows-3.1.0.zip) and extract it to a permanent folder.
-2. Run `Install-Chrome.bat` or `Install-Edge.bat` to open the extension folder and browser extensions page. Alternatively, open `chrome://extensions/` or `edge://extensions/` manually.
-3. Enable **Developer mode**, choose **Load unpacked**, and select the **extension** folder containing `manifest.json`.
-4. Keep that folder in place after installation. To update, replace its extension files, click **Reload** on the browser extensions page, and refresh your ChatGPT tab.
+Extract GoodogChatExport-Windows-3.2.0.zip to a permanent folder. Open chrome://extensions/ or edge://extensions/, enable Developer mode, and load the extension folder. To update, replace the extension files, click Reload, and refresh your ChatGPT tab. BAT helpers only open the folder and extensions page; they do not change browser security settings. Requires Chromium 116 or newer. Python, Node.js and an OpenAI API key are not required.
 
-Requires Chrome/Edge based on Chromium 116 or later. Python, Node.js and an OpenAI API key are not required to use the extension. Installation uses the browser's normal unpacked-extension workflow; the BAT helpers do not change browser security settings.
+## Import a ZIP and create an HTML site
 
-## Export an open conversation
+1. Open the extension; use Open in a wide window for large archives.
+2. Select the official ChatGPT account-export ZIP, a single-chat ZIP from this extension, or conversations.json in the local import section. No prior ZIP extraction is needed.
+3. For one conversation, select it and save MD/ZIP. The redesigned chat.html inside the ZIP has right-aligned user bubbles, flowing assistant responses, formatted code/tables, local media/files and automatic light/dark styling.
+4. For all conversations, choose Save offline HTML site (all chats). Extract the result and open index.html. The sidebar offers conversation titles and title search. Only the selected chat loads. A menu button opens the sidebar on small screens.
+5. The chats folder holds each conversation's HTML, Markdown, JSON and available original attachments. Root manifest.json reports coverage/errors; per-chat reports list file SHA-256 hashes. Missing files are explicitly reported.
 
-1. Sign in to ChatGPT in the same browser and open a saved conversation at `/c/…`. Project/GPT paths such as `/g/…/c/…` are supported too.
-2. Open the extension. For large exports, choose **Open in a wide window** and keep the original ChatGPT tab open.
-3. Choose **ZIP · chat and files** or **MD · Markdown**, then start loading. No scrolling is needed: the extension requests conversation JSON pages.
-4. For ZIP, the browser may request optional access to `oaiusercontent.com` and `blob.core.windows.net` to retrieve original attachments. Denying it does not block history loading; unavailable files are reported.
-5. Wait for loading and attachment processing, then choose where to save the file in the browser's save dialog.
+ZIP import recognizes conversations.json, conversations-N.json and conversation.json. HTML-site ZIPs created by this version can be imported again. HTML/MD-only archives do not contain enough structured data to restore conversations. An optional extracted attachment folder can supplement older exports. Only unambiguous matches are included. Local import never retrieves missing files from the network.
 
-You can stop loading and save the available part. History coverage and attachment coverage are shown separately. An incomplete history or missing file is not reported as a complete export.
+## Export directly from ChatGPT
 
-## ZIP contents
+Open a saved conversation at /c/... or /g/.../c/..., choose ZIP or MD, then load the history without scrolling. Keep the original ChatGPT tab open for large exports. ZIP may request optional access to oaiusercontent.com and blob.core.windows.net for original attachments. Denied access does not block text export; unavailable attachments appear in the report. Loading can be stopped and the available portion saved.
 
-| File | Contents |
-| --- | --- |
-| `chat.html` | Offline conversation viewer with local image, audio and video previews, and file links. |
-| `chat.md` | Current-branch text, including code, Markdown, links and interrupted answers. |
-| `conversation.json` | Visible messages, relationships and attachment metadata. |
-| `attachments/` | Original bytes of available files. |
-| `manifest.json` | Each detected file's local path, size and SHA-256, or its missing-file reason. |
-| `README.txt` | Archive contents and limitations in the selected language. |
+A normal ZIP contains chat.html, chat.md, conversation.json, manifest.json, attachments/ and optional previews/. Markdown attachments have a safe HTML preview for UTF-8 files up to 2 MiB each and 8 MiB of generated HTML per archive. Messages longer than 2,097,152 characters are displayed literally.
 
-Extract the complete ZIP and open `chat.html`. The viewer runs no scripts and loads no remote resources. SVG and HTML attachments remain downloadable files and are not executed inside the chat viewer. Ordinary source links remain links; their websites are not downloaded.
+## Coverage, privacy and limits
 
-Supported attachment sources include file metadata, image/audio/video pointers, available tool images, and `/mnt/data` sandbox links in message text outside code blocks, when ChatGPT still permits access to the original file. Deleted, expired, revoked, unsupported or oversized files are recorded in `manifest.json`; a filename is never substituted for an original file.
+Local import stays in the extension tab's memory and is never uploaded. After extraction, the HTML site works without a server or internet connection. It is a read-only archive, not a live ChatGPT client. Source links remain links; remote images do not load automatically. Message HTML is escaped.
 
-## What “the whole chat” means
+Each conversation shows its current branch. Available alternative visible nodes remain in JSON; hidden instructions, profiles and internal reasoning are excluded. History coverage and attachment coverage are separate. Conversion failures are represented by a conversation error page and a report entry, never silently omitted.
 
-The main transcript is the currently selected branch, loaded to confirmed pagination boundaries. Alternative answers are not mixed into `chat.md` or `chat.html`. If the returned mapping already contains alternative visible nodes, they and their available attachments are retained separately in `conversation.json`; `availableAlternatesCount` records their number.
+Import limits: ZIP up to 8 GiB, 50,000 entries, 512 MiB of combined conversation JSON, 64 MiB per conversation JSON and 20,000 conversations. Encrypted ZIPs are unsupported. Import checks paths, decompressed sizes and CRC-32. Export limits: 256 MiB per attachment and 1.5 GiB per ZIP; HTML sites allow a 1 GiB attachment budget, reserving the rest for text/reports. Files exceeding the budget are marked unavailable. Text/ZIP limit failures stop the operation instead of presenting a truncated archive as complete. Extra browser memory is needed; use a separate extension tab for large archives.
 
-A flat API may not supply every alternative branch. The extension does not open other conversations, guess hidden branch endpoints or recover deleted data. The official account export can provide a more complete conversation tree. Hidden system instructions, profile data, memory and internal reasoning are excluded.
+Marked 18.1.1 (MIT) and zip.js 2.23.0 (BSD-3-Clause) are bundled locally with licenses. ChatGPT's undocumented JSON routes may change; the official account export is the fallback source.
 
-Historical interrupted answers retain their available text without making fully loaded history partial. If the latest answer is still being generated, the export is a snapshot of the text currently available; export again after it finishes.
-
-## Markdown (.md) mode
-
-MD includes all available visible text in the current branch, code, links and text captions. Images, binary attachments and file placeholders are omitted. Files use UTF-8 with a BOM for Windows. MD does not require optional file-storage permissions.
-
-You can save another format from already loaded conversation data. To change the language of service labels in an already collected transcript, reload the conversation in the selected language. Message content is unchanged.
-
-## Import an official ChatGPT export
-
-1. Request and download your account's built-in ChatGPT data export.
-2. Extract its ZIP using your normal archive tool.
-3. In the extension's wide window, open `conversations.json`. A single conversation JSON containing `mapping` or `messages` is also supported.
-4. For ZIP output, optionally select the extracted export folder containing attachments. Only files matching the selected conversation by ID or unambiguous filename are included.
-5. Select a conversation and export format, then save. Without an attachment folder, the ZIP is still created and missing originals are reported.
-
-Local files are processed in browser memory and are never uploaded. Local archive building does not make network requests for attachments and does not require an active ChatGPT session. Large top-level conversation arrays are indexed incrementally in a Worker; the selected conversation is loaded for conversion. Keep the extension tab open while processing.
-
-## Limits
-
-- Up to 256 MiB per attachment and 1.5 GiB per ZIP. Archives are built from Blobs in browser memory, not streamed as ZIP64 directly to disk. Oversized files are reported; insufficient browser memory can still cause an error.
-- Direct history loading is bounded to 1,000 pages, 250,000 message objects, 256 MiB of incoming JSON and eight minutes. Reaching a limit produces partial history with a warning.
-- ZIP uses STORE without additional compression. Images, video and existing archives are usually compressed already.
-- ChatGPT's read-only HTTP routes are undocumented and may change. Use the official local export if direct loading is unavailable. Access checks are not bypassed.
-
-## Privacy and permissions
-
-The extension has no export server, telemetry or remote code. `activeTab` and `scripting` access the selected conversation after your explicit action; `downloads` saves a local file; `offscreen` builds temporary MD/ZIP data. There are no permanent `host_permissions`. Optional file-host access is requested only when you choose a direct ZIP action.
-
-A temporary authorization value from your own active ChatGPT session is used only inside the source tab for scoped read-only conversation/file requests. It is never sent to the background worker, file CDN or any other server, and is never included in an archive or log. File hosts receive only an allowed download URL, without authorization headers or cookies. Private download-source URLs are excluded from public archive metadata. Chat content is not stored in `localStorage` or `chrome.storage`; only the UI language preference is remembered.
-
-Read-only contract references: [chatgpt-exporter](https://github.com/pionxzh/chatgpt-exporter/blob/master/src/api.ts), [chatgpt-chat-exporter](https://github.com/rashidazarang/chatgpt-chat-exporter/blob/master/src/extraction-engine.js). This package contains neither extension's code and does not require them.
-
-## Build from source
-
-Use Python 3.9 or later; only the standard library is required:
-
-```sh
-python build.py
-python build.py --output ./release
-```
-
-The builder reads the explicit extension allowlist, both READMEs, `LICENSE` and the four BAT helpers from this repository. It creates a versioned Windows package folder, ZIP and `.sha256` file in `dist/` by default. Existing output is refused. It does not access ChatGPT or execute the extension.
-
-Release preparation covers source syntax and package metadata/integrity. End-to-end Chrome/Edge and Windows execution have not been performed; availability of each attachment type in a real account is not verified.
-
-## License
-
-Markdown rendering uses bundled [Marked 18.1.1](https://github.com/markedjs/marked), MIT licensed. Its license is in `extension/vendor/marked-LICENSE.txt`.
-
-[MIT](LICENSE).
+At the user's request, validation covers syntax and installer-package integrity only. Test suites, browser/real-account probes and execution on Windows have not been performed.

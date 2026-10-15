@@ -1,7 +1,7 @@
 /* Local Markdown rendering. Raw HTML is escaped; no scripts or remote images. */
 (() => {
   "use strict";
-  const VERSION = "3.1.0";
+  const VERSION = "3.2.0";
   if (globalThis.GoodogMarkdown?.version === VERSION) return;
   const MAX_RENDER_CHARS = 2 * 1024 * 1024;
   const escape = value => String(value ?? "").replace(/[&<>"']/gu, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);

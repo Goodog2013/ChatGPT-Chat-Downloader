@@ -1,7 +1,7 @@
-/* Goodog Chat Export 3.1.0. Same-origin read-only JSON and attachment resolvers. */
+/* Goodog Chat Export 3.2.0. Same-origin read-only JSON and attachment resolvers. */
 (() => {
   "use strict";
-  const VERSION = "3.1.0";
+  const VERSION = "3.2.0";
   const previous = globalThis.GoodogChatExport;
   if (previous?.version === VERSION) return;
   if (previous && ["collecting", "saving"].includes(previous.getState?.().phase)) {

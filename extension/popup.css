@@ -106,6 +106,11 @@ body[data-phase="error"] #phase-label, body[data-phase="cancelled"] #phase-label
 .local-selection { display: grid; gap: 10px; margin-top: 16px; }
 .local-folder-controls { margin-top: 10px; }
 .local-folder-controls .section-copy { margin-bottom: 0; font-size: 11px; }
+.local-import-hint { margin: -4px 0 14px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.local-import-summary { margin: 10px 0 0; color: var(--green); font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.local-site { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.local-site h3 { margin: 0; color: var(--text); font-size: 14px; line-height: 1.4; }
+.local-site > p { margin: 8px 0 12px; color: var(--soft); font-size: 12px; line-height: 1.6; }
 .local-selection label { color: var(--soft); font-size: 12px; }
 .local-selection select { display: block; width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: #102018; color: var(--text); }
 .local-selection select:disabled { opacity: 0.6; }

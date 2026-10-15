@@ -26,7 +26,7 @@ async function ensureExporter(tabId) {
     const task = (async () => {
       const [existing] = await chrome.scripting.executeScript({
         target: { tabId }, world: "ISOLATED",
-        func: () => globalThis.GoodogChatExport?.version === "3.1.0",
+        func: () => globalThis.GoodogChatExport?.version === "3.2.0",
       });
       if (!existing?.result) await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", files: ["i18n.js", "conversation-data.js", "archive-data.js", "exporter.js"] });
     })().finally(() => { if (injections.get(tabId) === task) injections.delete(tabId); });

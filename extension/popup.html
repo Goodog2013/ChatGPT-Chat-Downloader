@@ -39,12 +39,12 @@
 
       <label class="option" for="include-links">
         <input id="include-links" type="checkbox" checked aria-describedby="option-hint" />
-        <span><strong>Добавлять адреса ссылок</strong><small id="option-hint">Для нового получения чата или сохранения выбранного JSON</small></span>
+        <span><strong>Добавлять адреса ссылок</strong><small id="option-hint">Для нового получения чата или сохранения локального файла</small></span>
       </label>
 
       <section id="unsupported" class="notice" hidden>
         <strong>Откройте разговор в ChatGPT</strong>
-        <p id="unsupported-message">Для прямого получения откройте нужный чат на chatgpt.com или chat.openai.com и нажмите значок расширения. Локальный JSON можно открыть ниже.</p>
+        <p id="unsupported-message">Для прямого получения откройте нужный чат на chatgpt.com или chat.openai.com и нажмите значок расширения. Локальный ZIP или JSON можно открыть ниже.</p>
         <a class="open-chatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">Открыть ChatGPT<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 15 15 5M6 5h9v9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
       </section>
 
@@ -82,24 +82,31 @@
       </div>
 
       <section class="local-import" aria-labelledby="local-heading">
-        <div class="section-heading"><h2 id="local-heading">Из официального экспорта ChatGPT</h2><span class="file-badge">JSON → ZIP / MD</span></div>
-        <p class="section-copy">Распакуйте экспорт данных ChatGPT и выберите <code>conversations.json</code>. Подходит также JSON одного разговора. ZIP экспорта сначала нужно распаковать.</p>
-        <input id="local-file" type="file" accept=".json,application/json" hidden />
-        <button id="local-open" class="secondary-button" type="button">Открыть JSON из экспорта ChatGPT</button>
+        <div class="section-heading"><h2 id="local-heading">Импорт ZIP или JSON</h2><span class="file-badge">ZIP / JSON → HTML / MD</span></div>
+        <p class="section-copy">Откройте ZIP официального экспорта ChatGPT, ZIP одного чата из этого расширения или JSON. ZIP можно не распаковывать: переписки и вложения читаются локально.</p>
+        <p class="local-import-hint">Большой экспорт удобнее открывать в широкой вкладке. Оставьте её открытой до завершения обработки.</p>
+        <input id="local-file" type="file" accept=".zip,.json,application/zip,application/x-zip-compressed,application/json" hidden />
+        <button id="local-open" class="secondary-button" type="button">Открыть ZIP или JSON</button>
         <div id="local-folder-controls" class="local-folder-controls">
           <input id="local-folder" type="file" webkitdirectory multiple hidden />
           <button id="local-folder-open" class="secondary-button" type="button">Выбрать папку экспорта с вложениями</button>
-          <p id="local-folder-status" class="section-copy">Необязательно: выберите распакованную папку официального экспорта. В ZIP попадут только файлы выбранной ветки, которые удастся сопоставить; без папки недоступные вложения будут отмечены.</p>
+          <p id="local-folder-status" class="section-copy">Необязательно: добавьте папку с распакованными вложениями. При импорте ZIP файлы берутся из архива; папка может дополнить отсутствующие вложения для выбранного чата или всего сайта.</p>
         </div>
         <p id="local-status" class="local-status" role="status" aria-live="polite">Файл обрабатывается только в памяти этой вкладки и никуда не отправляется.</p>
+        <p id="local-import-summary" class="local-import-summary" hidden></p>
         <div id="local-selection" class="local-selection" hidden>
           <label for="local-conversation">Разговор для сохранения</label>
           <select id="local-conversation"></select>
           <p id="local-archive" class="local-status" hidden></p>
           <button id="local-download" class="primary-button" type="button" disabled>Сохранить выбранный чат в ZIP</button>
         </div>
+        <section class="local-site" aria-labelledby="local-site-heading">
+          <h3 id="local-site-heading">Офлайн HTML-сайт</h3>
+          <p>Полный экспорт станет сайтом со списком всех переписок и отдельными страницами чатов. Для одного чата будет создана одна страница. Результат скачивается как ZIP; распакуйте его и откройте index.html.</p>
+          <button id="local-site-download" class="primary-button" type="button" disabled>Сохранить офлайн HTML-сайт (все чаты)</button>
+        </section>
         <p id="local-error" class="error" role="alert" hidden></p>
-        <section id="local-warnings" class="warnings" hidden aria-label="Замечания к локальному JSON"><strong>Обратите внимание</strong><ul id="local-warning-list"></ul></section>
+        <section id="local-warnings" class="warnings" hidden aria-label="Замечания к локальному импорту"><strong>Обратите внимание</strong><ul id="local-warning-list"></ul></section>
       </section>
 
       <footer>

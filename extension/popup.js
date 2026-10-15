@@ -18,6 +18,7 @@
     "local-selection", "local-conversation", "local-download", "local-error", "local-warnings", "local-warning-list",
     "archive-status", "archive-stage", "archive-count", "archive-coverage",
     "ui-language", "permission-note", "local-folder-controls", "local-folder", "local-folder-open", "local-folder-status", "local-archive",
+    "local-import-summary", "local-site-download",
   ].map((id) => [id, byId(id)]));
   const phaseLabels = {
     idle: "Готов к работе", collecting: "Получение данных", ready: "Данные получены",
@@ -28,7 +29,7 @@
     collecting: "Загружаем все страницы текущей ветки без прокрутки чата…",
     ready: "Полученные сообщения готовы к сохранению в выбранном формате.",
     cancelled: "Получение остановлено. Доступную часть можно сохранить.",
-    error: "Если прямое получение недоступно, откройте JSON из официального экспорта ниже.",
+    error: "Если прямое получение недоступно, откройте ZIP или JSON из официального экспорта ниже.",
     saving: "Выберите имя и папку в окне сохранения. Дождитесь завершения загрузки.",
     saved: "Файл сохранён. При необходимости скачайте его ещё раз или выберите другой формат.",
   };
@@ -47,7 +48,10 @@
   let localRequestId = null;
   let localLoading = false;
   let localExporting = false;
+  let localExportKind = "";
   let localConversations = [];
+  let localSourceKind = null;
+  let localConversationCount = 0;
   let localWarnings = [];
   let localError = "";
   let localStatus = "Файл обрабатывается только в памяти этой вкладки и никуда не отправляется.";
@@ -157,7 +161,7 @@
     elements.progress.hidden = !busy;
     elements["keep-open"].hidden = !collecting && pendingAction !== "GCE_START";
     elements["include-links"].disabled = busy || localLoading || localExporting;
-    elements["primary-action"].disabled = !initialized || busy || (!hasText && state.archiveAvailable && format === "md");
+    elements["primary-action"].disabled = !initialized || busy || localLoading || localExporting || (!hasText && state.archiveAvailable && format === "md");
     elements["primary-action"].setAttribute("aria-busy", String(busy));
     elements["primary-label"].textContent = collecting || pendingAction === "GCE_START"
       ? "Загружаем все страницы…"
@@ -170,7 +174,7 @@
     elements["cancel-action"].disabled = Boolean(pendingAction) || cancelRequested;
     elements["cancel-action"].textContent = cancelRequested ? "Останавливаем получение…" : saving ? "Отменить подготовку ZIP" : "Остановить получение";
     elements["restart-action"].hidden = !hasExport || busy;
-    elements["restart-action"].disabled = Boolean(pendingAction);
+    elements["restart-action"].disabled = Boolean(pendingAction) || localLoading || localExporting;
     elements.coverage.hidden = !hasExport && !collecting;
     elements.coverage.textContent = state.coverage === "partial"
       ? "Полная история текущей ветки не подтверждена. В экспорт войдёт доступная часть; причины указаны в предупреждениях."
@@ -210,23 +214,28 @@
   }
 
   function renderLocal() {
-    const busy = localLoading || localExporting;
+    const busy = localLoading || localExporting || ["collecting", "saving"].includes(state.phase) || Boolean(pendingAction);
     elements["local-open"].disabled = busy;
-    elements["local-open"].textContent = localLoading ? "Читаем JSON…" : localConversations.length ? "Открыть другой JSON" : "Открыть JSON из экспорта ChatGPT";
+    elements["local-open"].textContent = localLoading ? "Читаем ZIP или JSON…" : localConversations.length ? "Открыть другой ZIP или JSON" : "Открыть ZIP или JSON";
     elements["local-status"].textContent = localStatus;
     elements["local-selection"].hidden = localConversations.length === 0;
     elements["local-conversation"].disabled = busy;
-    elements["local-folder-controls"].hidden = selectedFormat() !== "zip";
+    elements["local-folder-controls"].hidden = false;
     elements["local-folder-open"].disabled = busy;
     elements["local-folder-status"].textContent = localFiles.length
-      ? `Выбрано файлов в папке: ${localFiles.length.toLocaleString("ru-RU")}. Для ZIP будут использованы только вложения выбранной ветки.`
-      : "Необязательно: выберите распакованную папку официального экспорта. В ZIP попадут только файлы выбранной ветки, которые удастся сопоставить; без папки недоступные вложения будут отмечены.";
+      ? `Выбрано файлов в папке: ${localFiles.length.toLocaleString("ru-RU")}. При сохранении используются только сопоставленные вложения экспортируемых чатов.`
+      : "Необязательно: добавьте папку с распакованными вложениями. При импорте ZIP файлы берутся из архива; папка может дополнить отсутствующие вложения для выбранного чата или всего сайта.";
+    elements["local-import-summary"].hidden = !localSourceKind || localLoading;
+    elements["local-import-summary"].textContent = `Источник: ${(localSourceKind || "json").toUpperCase()}. Переписок в файле: ${localConversationCount.toLocaleString("ru-RU")}.`;
     elements["local-download"].disabled = busy || !localConversations.length;
-    elements["local-download"].textContent = localExporting ? `Готовим ${selectedFormat().toUpperCase()}…` : `Сохранить выбранный чат в ${selectedFormat().toUpperCase()}`;
-    elements["local-archive"].hidden = selectedFormat() !== "zip" || !localArchive;
+    elements["local-download"].textContent = localExporting && localExportKind !== "site" ? `Готовим ${selectedFormat().toUpperCase()}…` : `Сохранить выбранный чат в ${selectedFormat().toUpperCase()}`;
+    elements["local-site-download"].disabled = busy || !localConversations.length;
+    elements["local-site-download"].textContent = localExporting && localExportKind === "site" ? "Собираем офлайн HTML-сайт…" : "Сохранить офлайн HTML-сайт (все чаты)";
+    elements["local-site-download"].setAttribute("aria-busy", String(localExporting && localExportKind === "site"));
+    elements["local-archive"].hidden = (selectedFormat() !== "zip" && localExportKind !== "site") || !localArchive;
     elements["local-archive"].textContent = localArchive
       ? `Файлов включено: ${safeCount(localArchive.downloaded).toLocaleString("ru-RU")} из ${safeCount(localArchive.total).toLocaleString("ru-RU")} · недоступно: ${safeCount(localArchive.missing).toLocaleString("ru-RU")} · ${bytesLabel(safeCount(localArchive.bytes))}` : "";
-    elements["local-download"].setAttribute("aria-busy", String(localExporting));
+    elements["local-download"].setAttribute("aria-busy", String(localExporting && localExportKind !== "site"));
     elements["local-error"].textContent = localError;
     elements["local-error"].hidden = !localError;
     elements["local-warning-list"].replaceChildren(...localWarnings.map(text => {
@@ -238,10 +247,11 @@
   }
 
   function failLocal(error) {
+    if (localLoading) { localSourceKind = null; localConversationCount = 0; }
     localLoading = false;
     localExporting = false;
-    localError = messageOf(error, "Не удалось обработать JSON. Выберите файл повторно.");
-    localStatus = "Файл не отправлялся в сеть. Можно выбрать JSON повторно.";
+    localError = messageOf(error, "Не удалось обработать ZIP или JSON. Выберите файл повторно.");
+    localStatus = "Файл не отправлялся в сеть. Можно выбрать ZIP или JSON повторно.";
     render();
   }
 
@@ -254,7 +264,7 @@
     return `${name}.${format === "zip" ? "zip" : "md"}`;
   }
 
-  function downloadLocal(message) {
+  function downloadLocal(message, site = false) {
     const format = message.format === "zip" ? "zip" : "md";
     if (format === "zip" ? !(message.blob instanceof Blob) || !message.blob.size : typeof message.text !== "string" || !message.text.length) throw new Error("Не удалось подготовить файл выбранного разговора.");
     const filename = safeLocalFilename(message.filename, format);
@@ -269,15 +279,19 @@
     try { anchor.click(); } finally { anchor.remove(); }
     setTimeout(() => { URL.revokeObjectURL(url); downloadUrls.delete(url); }, 120000);
     const count = Number.isSafeInteger(message.count) && message.count >= 0 ? message.count.toLocaleString("ru-RU") : "—";
-    const coverageNote = message.coverage === "complete"
-      ? " История выбранной ветки в JSON полная."
-      : message.coverage === "partial" ? " Полная история выбранной ветки не подтверждена — проверьте предупреждения." : " Полнота истории выбранной ветки не подтверждена.";
+    const coverageNote = site
+      ? message.coverage === "complete" ? " История всех включённых текущих веток восстановлена полностью." : " Полнота истории всех переписок не подтверждена — проверьте предупреждения и отчёт сайта."
+      : message.coverage === "complete" ? " История выбранной ветки в файле полная."
+        : message.coverage === "partial" ? " Полная история выбранной ветки не подтверждена — проверьте предупреждения." : " Полнота истории выбранной ветки не подтверждена.";
     const nonTextNote = Number.isSafeInteger(message.stats?.nonTextMessages) && message.stats.nonTextMessages > 0
       ? ` Сообщений без текста пропущено: ${message.stats.nonTextMessages.toLocaleString("ru-RU")}.` : "";
     const filesNote = format === "md" ? " Картинки и вложения исключены."
       : safeCount(message.archive?.missing) > 0 || message.archive?.coverage !== "complete" ? " Полнота вложений ZIP не подтверждена; проверьте предупреждения." : " Все найденные вложения включены в ZIP.";
     localArchive = format === "zip" ? message.archive || null : null;
-    localStatus = `Файл передан браузеру для сохранения: ${filename}. Сообщений с текстом: ${count}.${coverageNote}${format === "md" ? nonTextNote : ""}${filesNote}`;
+    if (site) {
+      const conversations = Number.isSafeInteger(message.conversationCount) && message.conversationCount >= 0 ? message.conversationCount.toLocaleString("ru-RU") : "—";
+      localStatus = `HTML-сайт передан браузеру для сохранения: ${filename}. Переписок: ${conversations}. Видимых сообщений: ${count}.${coverageNote}${filesNote}`;
+    } else localStatus = `Файл передан браузеру для сохранения: ${filename}. Сообщений с текстом: ${count}.${coverageNote}${format === "md" ? nonTextNote : ""}${filesNote}`;
   }
 
   function getLocalWorker() {
@@ -290,7 +304,7 @@
       if (message.type === "ERROR") { failLocal(message.error); return; }
       if (message.type === "PROGRESS" && (localLoading || localExporting)) {
         const count = Number.isSafeInteger(message.count) && message.count >= 0 ? ` Обработано объектов: ${message.count.toLocaleString("ru-RU")}.` : "";
-        localStatus = `${typeof message.message === "string" && message.message.trim() ? message.message : "Обрабатываем JSON…"}${count} Оставьте это окно открытым.`;
+        localStatus = `${typeof message.message === "string" && message.message.trim() ? message.message : localExportKind === "site" ? "Собираем офлайн HTML-сайт…" : "Обрабатываем ZIP или JSON…"}${count} Оставьте это окно открытым.`;
         if (message.archive && typeof message.archive === "object") localArchive = message.archive;
         renderLocal();
         localizePage();
@@ -298,18 +312,20 @@
       }
       try {
         if (message.type === "LOADED" && localLoading) {
-          if (!Array.isArray(message.conversations)) throw new Error("JSON обработан без списка разговоров.");
+          if (!Array.isArray(message.conversations)) throw new Error("Файл обработан без списка разговоров.");
           localConversations = message.conversations.filter(item => item && Number.isSafeInteger(item.index) && item.index >= 0);
           localLoading = false;
+          if (["zip", "json"].includes(message.sourceKind)) localSourceKind = message.sourceKind;
+          localConversationCount = Number.isSafeInteger(message.conversationCount) && message.conversationCount >= 0 ? message.conversationCount : localConversations.length;
           localWarnings = Array.isArray(message.warnings) ? message.warnings.filter(text => typeof text === "string") : [];
           renderConversationOptions();
-          localStatus = localConversations.length ? `JSON открыт. Доступно разговоров: ${localConversations.length.toLocaleString("ru-RU")}. Выберите нужный и формат сохранения.` : "В JSON не найдены разговоры. Выберите conversations.json из распакованного экспорта ChatGPT.";
+          localStatus = localConversations.length ? "Выберите чат для MD или ZIP либо сохраните все переписки как офлайн HTML-сайт. Данные остаются на этом компьютере." : "В файле не найдены переписки. Выберите ZIP официального экспорта ChatGPT, ZIP одного чата из расширения или JSON.";
           render();
         } else if (message.type === "EXPORTED" && localExporting) {
           localExporting = false;
           const warnings = Array.isArray(message.warnings) ? message.warnings.filter(text => typeof text === "string") : [];
           localWarnings = [...new Set([...localWarnings, ...warnings])];
-          downloadLocal(message);
+          downloadLocal(message, localExportKind === "site");
           render();
         }
       } catch (error) { failLocal(error); }
@@ -320,8 +336,10 @@
       worker.terminate();
       localWorker = null;
       localConversations = [];
+      localSourceKind = null;
+      localConversationCount = 0;
       elements["local-conversation"].replaceChildren();
-      failLocal("Не удалось обработать JSON в памяти браузера. Откройте широкое окно и выберите файл повторно.");
+      failLocal("Не удалось обработать ZIP или JSON в памяти браузера. Откройте широкое окно и выберите файл повторно.");
     });
     return worker;
   }
@@ -343,9 +361,12 @@
   function loadLocalFile() {
     const file = elements["local-file"].files?.[0];
     elements["local-file"].value = "";
-    if (!file || disposed || localLoading || localExporting) return;
-    if (!/\.json$/iu.test(file.name)) { failLocal("Выберите файл .json из распакованного экспорта. ZIP сначала нужно распаковать."); return; }
+    if (!file || disposed || localLoading || localExporting || ["collecting", "saving"].includes(state.phase) || pendingAction) return;
+    if (!/\.(?:json|zip)$/iu.test(file.name)) { failLocal("Выберите ZIP или JSON экспорта ChatGPT. ZIP можно открыть без распаковки."); return; }
     localConversations = [];
+    localSourceKind = /\.zip$/iu.test(file.name) ? "zip" : "json";
+    localConversationCount = 0;
+    localExportKind = "";
     elements["local-conversation"].replaceChildren();
     localWarnings = [];
     localArchive = null;
@@ -359,10 +380,11 @@
   }
 
   function exportLocal() {
-    if (disposed || localLoading || localExporting || !localWorker) return;
+    if (disposed || localLoading || localExporting || !localWorker || ["collecting", "saving"].includes(state.phase) || pendingAction) return;
     const index = Number(elements["local-conversation"].value);
     if (!localConversations.some(item => item.index === index)) return;
     localExporting = true;
+    localExportKind = "conversation";
     localError = "";
     const format = selectedFormat();
     localArchive = null;
@@ -371,6 +393,21 @@
     render();
     try { localWorker.postMessage({ type: "EXPORT", requestId: localRequestId, index, includeLinks: elements["include-links"].checked, format, language, ...(format === "zip" ? { files: localFiles.map(file => ({ file, path: file.webkitRelativePath || file.name })) } : {}) }); }
     catch (error) { failLocal(error); }
+  }
+
+  function exportLocalSite() {
+    if (disposed || localLoading || localExporting || !localWorker || !localConversations.length || ["collecting", "saving"].includes(state.phase) || pendingAction) return;
+    localExporting = true;
+    localExportKind = "site";
+    localError = "";
+    localArchive = null;
+    localStatus = "Собираем офлайн HTML-сайт всех загруженных переписок с доступными вложениями… Оставьте эту вкладку открытой.";
+    localRequestId = ++localRequestSequence;
+    render();
+    try {
+      localWorker.postMessage({ type: "EXPORT_SITE", requestId: localRequestId, includeLinks: elements["include-links"].checked, language,
+        files: localFiles.map(file => ({ file, path: file.webkitRelativePath || file.name })) });
+    } catch (error) { failLocal(error); }
   }
 
   async function request(type, options) {
@@ -408,6 +445,7 @@
 
   async function runAction(type) {
     if (!initialized || disposed || pendingAction || (["saving", "collecting"].includes(state.phase) && type !== "GCE_CANCEL")) return;
+    if (type !== "GCE_CANCEL" && (localLoading || localExporting)) return;
     pendingAction = type;
     actionEpoch += 1;
     transportError = "";
@@ -447,9 +485,10 @@
   elements["local-open"].addEventListener("click", () => elements["local-file"].click());
   elements["local-file"].addEventListener("change", loadLocalFile);
   elements["local-download"].addEventListener("click", exportLocal);
+  elements["local-site-download"].addEventListener("click", exportLocalSite);
   elements["local-folder-open"].addEventListener("click", () => elements["local-folder"].click());
   elements["local-folder"].addEventListener("change", () => {
-    if (localLoading || localExporting || disposed) return;
+    if (localLoading || localExporting || disposed || ["collecting", "saving"].includes(state.phase) || pendingAction) return;
     localFiles = [...elements["local-folder"].files];
     elements["local-folder"].value = "";
     render();
