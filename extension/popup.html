@@ -21,7 +21,7 @@
 
       <section class="intro">
         <h1>Чат и вложения — в одном архиве</h1>
-        <p>Загрузите все страницы текущей ветки без прокрутки. ZIP сохраняет текст и доступные оригиналы вложений; TXT — только текст, код, ссылки и подписи.</p>
+        <p>Загрузите все страницы текущей ветки без прокрутки. ZIP сохраняет текст и доступные оригиналы вложений; MD — только текст, код, ссылки и подписи.</p>
       </section>
 
       <button id="wide-action" class="secondary-button wide-action" type="button" disabled>Открыть в широком окне</button>
@@ -31,7 +31,7 @@
         <legend>Формат сохранения</legend>
         <div class="format-grid">
           <label class="format-option" for="format-zip"><input id="format-zip" type="radio" name="format" value="zip" checked /><span><strong>ZIP · чат и файлы</strong><small>Текст и доступные оригиналы вложений</small></span></label>
-          <label class="format-option" for="format-txt"><input id="format-txt" type="radio" name="format" value="txt" /><span><strong>TXT · только текст</strong><small>Без картинок и вложений</small></span></label>
+          <label class="format-option" for="format-md"><input id="format-md" type="radio" name="format" value="md" /><span><strong>MD · Markdown</strong><small>Без картинок и вложений</small></span></label>
         </div>
         <p id="format-hint" class="format-hint">Недоступные вложения будут отмечены в предупреждениях. Полнота истории и полнота файлов показываются отдельно.</p>
       </fieldset>
@@ -82,7 +82,7 @@
       </div>
 
       <section class="local-import" aria-labelledby="local-heading">
-        <div class="section-heading"><h2 id="local-heading">Из официального экспорта ChatGPT</h2><span class="file-badge">JSON → ZIP / TXT</span></div>
+        <div class="section-heading"><h2 id="local-heading">Из официального экспорта ChatGPT</h2><span class="file-badge">JSON → ZIP / MD</span></div>
         <p class="section-copy">Распакуйте экспорт данных ChatGPT и выберите <code>conversations.json</code>. Подходит также JSON одного разговора. ZIP экспорта сначала нужно распаковать.</p>
         <input id="local-file" type="file" accept=".json,application/json" hidden />
         <button id="local-open" class="secondary-button" type="button">Открыть JSON из экспорта ChatGPT</button>
@@ -103,8 +103,8 @@
       </section>
 
       <footer>
-        <p class="privacy-note">Текущая ветка · ZIP или TXT UTF‑8 · обработка на компьютере</p>
-        <p>В ZIP входят доступные файлы; TXT сохраняет только текст. Недоступные вложения не выдаются за сохранённые.</p>
+        <p class="privacy-note">Текущая ветка · ZIP или MD UTF‑8 · обработка на компьютере</p>
+        <p>В ZIP входят доступные файлы; MD сохраняет только текст. Недоступные вложения не выдаются за сохранённые.</p>
       </footer>
     </main>
   </body>

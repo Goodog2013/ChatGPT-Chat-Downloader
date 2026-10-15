@@ -1,12 +1,16 @@
 # ChatGPT Chat Downloader · Goodog Chat Export
 
-[Русский](README.ru.md) · [Download for Windows](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.0.0/GoodogChatExport-Windows-3.0.0.zip)
+[Русский](README.ru.md) · [Download for Windows](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.1.0/GoodogChatExport-Windows-3.1.0.zip)
 
-A local Chrome/Edge extension that saves your current ChatGPT conversation branch as a ZIP with available original attachments, or as a text-only TXT file. English is the default; Russian is available in the language selector. Your messages are never translated.
+A local Chrome/Edge extension that saves your current ChatGPT conversation branch as a ZIP with available original attachments, or as a Markdown (.md) file. English is the default; Russian is available in the language selector. Your messages are never translated.
+
+## Markdown and HTML
+
+V3.1 replaces TXT with Markdown. `chat.md` preserves the transcript with message headings and separators. `chat.html` renders headings, lists, tables, quotes, links and fenced code blocks. Markdown attachments have an **Open Markdown** link to a local HTML preview in `previews/`; originals stay in `attachments/`. Preview limits: UTF-8 files up to 2 MiB each and 8 MiB of generated HTML per archive. When a preview is unavailable, the original remains available. Messages longer than 2,097,152 characters are shown literally, retaining the text. Raw HTML is escaped and remote images are not loaded.
 
 ## Install or update
 
-1. [Download GoodogChatExport-Windows-3.0.0.zip](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.0.0/GoodogChatExport-Windows-3.0.0.zip) and extract it to a permanent folder.
+1. [Download GoodogChatExport-Windows-3.1.0.zip](https://github.com/Goodog2013/ChatGPT-Chat-Downloader/releases/download/v3.1.0/GoodogChatExport-Windows-3.1.0.zip) and extract it to a permanent folder.
 2. Run `Install-Chrome.bat` or `Install-Edge.bat` to open the extension folder and browser extensions page. Alternatively, open `chrome://extensions/` or `edge://extensions/` manually.
 3. Enable **Developer mode**, choose **Load unpacked**, and select the **extension** folder containing `manifest.json`.
 4. Keep that folder in place after installation. To update, replace its extension files, click **Reload** on the browser extensions page, and refresh your ChatGPT tab.
@@ -17,7 +21,7 @@ Requires Chrome/Edge based on Chromium 116 or later. Python, Node.js and an Open
 
 1. Sign in to ChatGPT in the same browser and open a saved conversation at `/c/…`. Project/GPT paths such as `/g/…/c/…` are supported too.
 2. Open the extension. For large exports, choose **Open in a wide window** and keep the original ChatGPT tab open.
-3. Choose **ZIP · chat and files** or **TXT · text only**, then start loading. No scrolling is needed: the extension requests conversation JSON pages.
+3. Choose **ZIP · chat and files** or **MD · Markdown**, then start loading. No scrolling is needed: the extension requests conversation JSON pages.
 4. For ZIP, the browser may request optional access to `oaiusercontent.com` and `blob.core.windows.net` to retrieve original attachments. Denying it does not block history loading; unavailable files are reported.
 5. Wait for loading and attachment processing, then choose where to save the file in the browser's save dialog.
 
@@ -28,7 +32,7 @@ You can stop loading and save the available part. History coverage and attachmen
 | File | Contents |
 | --- | --- |
 | `chat.html` | Offline conversation viewer with local image, audio and video previews, and file links. |
-| `chat.txt` | Current-branch text, including code, Markdown, links and interrupted answers. |
+| `chat.md` | Current-branch text, including code, Markdown, links and interrupted answers. |
 | `conversation.json` | Visible messages, relationships and attachment metadata. |
 | `attachments/` | Original bytes of available files. |
 | `manifest.json` | Each detected file's local path, size and SHA-256, or its missing-file reason. |
@@ -40,15 +44,15 @@ Supported attachment sources include file metadata, image/audio/video pointers, 
 
 ## What “the whole chat” means
 
-The main transcript is the currently selected branch, loaded to confirmed pagination boundaries. Alternative answers are not mixed into `chat.txt` or `chat.html`. If the returned mapping already contains alternative visible nodes, they and their available attachments are retained separately in `conversation.json`; `availableAlternatesCount` records their number.
+The main transcript is the currently selected branch, loaded to confirmed pagination boundaries. Alternative answers are not mixed into `chat.md` or `chat.html`. If the returned mapping already contains alternative visible nodes, they and their available attachments are retained separately in `conversation.json`; `availableAlternatesCount` records their number.
 
 A flat API may not supply every alternative branch. The extension does not open other conversations, guess hidden branch endpoints or recover deleted data. The official account export can provide a more complete conversation tree. Hidden system instructions, profile data, memory and internal reasoning are excluded.
 
 Historical interrupted answers retain their available text without making fully loaded history partial. If the latest answer is still being generated, the export is a snapshot of the text currently available; export again after it finishes.
 
-## TXT mode
+## Markdown (.md) mode
 
-TXT includes all available visible text in the current branch, code, links and text captions. Images, binary attachments and file placeholders are omitted. Files use UTF-8 with a BOM for Windows. TXT does not require optional file-storage permissions.
+MD includes all available visible text in the current branch, code, links and text captions. Images, binary attachments and file placeholders are omitted. Files use UTF-8 with a BOM for Windows. MD does not require optional file-storage permissions.
 
 You can save another format from already loaded conversation data. To change the language of service labels in an already collected transcript, reload the conversation in the selected language. Message content is unchanged.
 
@@ -71,7 +75,7 @@ Local files are processed in browser memory and are never uploaded. Local archiv
 
 ## Privacy and permissions
 
-The extension has no export server, telemetry or remote code. `activeTab` and `scripting` access the selected conversation after your explicit action; `downloads` saves a local file; `offscreen` builds temporary TXT/ZIP data. There are no permanent `host_permissions`. Optional file-host access is requested only when you choose a direct ZIP action.
+The extension has no export server, telemetry or remote code. `activeTab` and `scripting` access the selected conversation after your explicit action; `downloads` saves a local file; `offscreen` builds temporary MD/ZIP data. There are no permanent `host_permissions`. Optional file-host access is requested only when you choose a direct ZIP action.
 
 A temporary authorization value from your own active ChatGPT session is used only inside the source tab for scoped read-only conversation/file requests. It is never sent to the background worker, file CDN or any other server, and is never included in an archive or log. File hosts receive only an allowed download URL, without authorization headers or cookies. Private download-source URLs are excluded from public archive metadata. Chat content is not stored in `localStorage` or `chrome.storage`; only the UI language preference is remembered.
 
@@ -91,5 +95,7 @@ The builder reads the explicit extension allowlist, both READMEs, `LICENSE` and 
 Release preparation covers source syntax and package metadata/integrity. End-to-end Chrome/Edge and Windows execution have not been performed; availability of each attachment type in a real account is not verified.
 
 ## License
+
+Markdown rendering uses bundled [Marked 18.1.1](https://github.com/markedjs/marked), MIT licensed. Its license is in `extension/vendor/marked-LICENSE.txt`.
 
 [MIT](LICENSE).

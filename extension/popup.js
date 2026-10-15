@@ -11,7 +11,7 @@
   document.body.classList.toggle("wide", wide);
   const byId = (id) => document.getElementById(id);
   const elements = Object.fromEntries([
-    "workspace", "unsupported", "unsupported-message", "include-links", "phase-label", "format-options", "format-zip", "format-txt", "format-hint", "format-badge", "current-format",
+    "workspace", "unsupported", "unsupported-message", "include-links", "phase-label", "format-options", "format-zip", "format-md", "format-hint", "format-badge", "current-format",
     "status-message", "count-label", "message-count", "page-count", "text-only-note", "progress", "coverage", "filename",
     "keep-open", "error", "warnings", "warning-list", "primary-action", "primary-label",
     "cancel-action", "restart-action", "wide-action", "local-file", "local-open", "local-status",
@@ -24,7 +24,7 @@
     cancelled: "Получение остановлено", error: "Нужно внимание", saving: "Сохранение", saved: "Файл сохранён",
   };
   const defaultMessages = {
-    idle: "Загрузите все страницы текущей ветки и сохраните её в выбранном формате ZIP или TXT.",
+    idle: "Загрузите все страницы текущей ветки и сохраните её в выбранном формате ZIP или MD.",
     collecting: "Загружаем все страницы текущей ветки без прокрутки чата…",
     ready: "Полученные сообщения готовы к сохранению в выбранном формате.",
     cancelled: "Получение остановлено. Доступную часть можно сохранить.",
@@ -59,8 +59,8 @@
   const CDN_ORIGINS = ["https://*.oaiusercontent.com/*", "https://*.blob.core.windows.net/*"];
 
   elements["wide-action"].hidden = wide;
-  elements["format-zip"].checked = parameters.get("format") !== "txt";
-  elements["format-txt"].checked = parameters.get("format") === "txt";
+  elements["format-zip"].checked = parameters.get("format") !== "md";
+  elements["format-md"].checked = parameters.get("format") === "md";
   elements["ui-language"].value = language;
 
   function t(value) { return globalThis.GoodogI18n?.translate(String(value), language) || String(value); }
@@ -82,7 +82,7 @@
     }
   }
 
-  function selectedFormat() { return elements["format-txt"].checked ? "txt" : "zip"; }
+  function selectedFormat() { return elements["format-md"].checked ? "md" : "zip"; }
   function safeCount(value) { return Number.isSafeInteger(value) && value >= 0 ? value : 0; }
   function bytesLabel(bytes) {
     if (bytes < 1024) return `${bytes.toLocaleString("ru-RU")} Б`;
@@ -106,7 +106,7 @@
       pages: Number.isSafeInteger(value.pages) && value.pages >= 0 ? value.pages : null,
       nonTextMessages: Number.isSafeInteger(value.stats?.nonTextMessages) && value.stats.nonTextMessages >= 0 ? value.stats.nonTextMessages : 0,
       archiveAvailable: value.archiveAvailable === true,
-      format: ["zip", "txt"].includes(value.format) ? value.format : state.format,
+      format: ["zip", "md"].includes(value.format) ? value.format : state.format,
       archive: value.archive && typeof value.archive === "object" ? {
         total: safeCount(value.archive.total), downloaded: safeCount(value.archive.downloaded), missing: safeCount(value.archive.missing), bytes: safeCount(value.archive.bytes),
         stage: typeof value.archive.stage === "string" ? value.archive.stage : "",
@@ -142,7 +142,7 @@
     elements["permission-note"].textContent = "Доступ к хранилищам вложений не предоставлен. История будет получена; часть файлов может оказаться недоступной и будет отмечена в предупреждениях ZIP.";
     elements["format-hint"].textContent = format === "zip"
       ? "ZIP включает текст текущей ветки и доступные оригиналы файлов. Недоступные вложения будут перечислены в предупреждениях; полнота истории и файлов показывается отдельно."
-      : "TXT сохраняет весь доступный текст текущей ветки, код, ссылки и подписи. Картинки и вложения в TXT не входят.";
+      : "MD сохраняет весь доступный текст текущей ветки, код, ссылки и подписи. Картинки и вложения в MD не входят.";
     elements["format-badge"].textContent = `.${(hasExport || busy ? state.format : format).toUpperCase()}`;
     elements["current-format"].hidden = !hasExport && !busy;
     elements["current-format"].textContent = `Текущий экспорт: ${state.format.toUpperCase()}. Для следующего сохранения выбран ${formatLabel}.`;
@@ -152,20 +152,20 @@
     elements["page-count"].textContent = state.pages !== null
       ? `Получено страниц: ${state.pages.toLocaleString("ru-RU")}${collecting ? " · загружаем историю до начала ветки…" : ""}`
       : "Загружаем все страницы текущей ветки…";
-    elements["text-only-note"].hidden = collecting || state.format !== "txt" || state.nonTextMessages === 0;
+    elements["text-only-note"].hidden = collecting || state.format !== "md" || state.nonTextMessages === 0;
     elements["text-only-note"].textContent = `Сообщений без текста пропущено: ${state.nonTextMessages.toLocaleString("ru-RU")} (картинки и вложения).`;
     elements.progress.hidden = !busy;
     elements["keep-open"].hidden = !collecting && pendingAction !== "GCE_START";
     elements["include-links"].disabled = busy || localLoading || localExporting;
-    elements["primary-action"].disabled = !initialized || busy || (!hasText && state.archiveAvailable && format === "txt");
+    elements["primary-action"].disabled = !initialized || busy || (!hasText && state.archiveAvailable && format === "md");
     elements["primary-action"].setAttribute("aria-busy", String(busy));
     elements["primary-label"].textContent = collecting || pendingAction === "GCE_START"
       ? "Загружаем все страницы…"
       : saving || pendingAction === "GCE_DOWNLOAD"
         ? `Сохраняем ${formatLabel}…`
-        : !hasText && state.archiveAvailable && format === "txt" ? "В этой ветке есть только вложения — выберите ZIP" : hasExport
+        : !hasText && state.archiveAvailable && format === "md" ? "В этой ветке есть только вложения — выберите ZIP" : hasExport
           ? partial ? `Сохранить доступную часть в ${formatLabel}` : state.phase === "saved" ? `Скачать ${formatLabel} ещё раз` : `Сохранить в ${formatLabel}`
-          : format === "zip" ? "Получить чат и вложения в ZIP" : "Получить весь текст в TXT";
+          : format === "zip" ? "Получить чат и вложения в ZIP" : "Получить весь текст в MD";
     elements["cancel-action"].hidden = !canCancel;
     elements["cancel-action"].disabled = Boolean(pendingAction) || cancelRequested;
     elements["cancel-action"].textContent = cancelRequested ? "Останавливаем получение…" : saving ? "Отменить подготовку ZIP" : "Остановить получение";
@@ -248,17 +248,17 @@
   function safeLocalFilename(value, format) {
     let name = String(value || "ChatGPT").normalize("NFC")
       .replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/gu, "_")
-      .replace(/[\u202a-\u202e\u2066-\u2069]/gu, "").replace(/\.(?:txt|zip)$/iu, "").trim();
+      .replace(/[\u202a-\u202e\u2066-\u2069]/gu, "").replace(/\.(?:md|txt|zip)$/iu, "").trim();
     name = [...name].slice(0, 140).join("").replace(/[. ]+$/gu, "") || "ChatGPT";
     if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(name)) name = `ChatGPT_${name}`;
-    return `${name}.${format === "zip" ? "zip" : "txt"}`;
+    return `${name}.${format === "zip" ? "zip" : "md"}`;
   }
 
   function downloadLocal(message) {
-    const format = message.format === "zip" ? "zip" : "txt";
+    const format = message.format === "zip" ? "zip" : "md";
     if (format === "zip" ? !(message.blob instanceof Blob) || !message.blob.size : typeof message.text !== "string" || !message.text.length) throw new Error("Не удалось подготовить файл выбранного разговора.");
     const filename = safeLocalFilename(message.filename, format);
-    const blob = format === "zip" ? message.blob : new Blob(["\uFEFF", message.text], { type: "text/plain;charset=utf-8" });
+    const blob = format === "zip" ? message.blob : new Blob(["\uFEFF", message.text], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     downloadUrls.add(url);
     const anchor = document.createElement("a");
@@ -274,10 +274,10 @@
       : message.coverage === "partial" ? " Полная история выбранной ветки не подтверждена — проверьте предупреждения." : " Полнота истории выбранной ветки не подтверждена.";
     const nonTextNote = Number.isSafeInteger(message.stats?.nonTextMessages) && message.stats.nonTextMessages > 0
       ? ` Сообщений без текста пропущено: ${message.stats.nonTextMessages.toLocaleString("ru-RU")}.` : "";
-    const filesNote = format === "txt" ? " Картинки и вложения исключены."
+    const filesNote = format === "md" ? " Картинки и вложения исключены."
       : safeCount(message.archive?.missing) > 0 || message.archive?.coverage !== "complete" ? " Полнота вложений ZIP не подтверждена; проверьте предупреждения." : " Все найденные вложения включены в ZIP.";
     localArchive = format === "zip" ? message.archive || null : null;
-    localStatus = `Файл передан браузеру для сохранения: ${filename}. Сообщений с текстом: ${count}.${coverageNote}${format === "txt" ? nonTextNote : ""}${filesNote}`;
+    localStatus = `Файл передан браузеру для сохранения: ${filename}. Сообщений с текстом: ${count}.${coverageNote}${format === "md" ? nonTextNote : ""}${filesNote}`;
   }
 
   function getLocalWorker() {
@@ -461,7 +461,7 @@
     render();
   });
   elements["format-zip"].addEventListener("change", render);
-  elements["format-txt"].addEventListener("change", render);
+  elements["format-md"].addEventListener("change", render);
   elements["wide-action"].addEventListener("click", () => {
     const url = new URL(chrome.runtime.getURL("popup.html"));
     url.searchParams.set("wide", "1");

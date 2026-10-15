@@ -1,7 +1,7 @@
 /* Local conversation-data conversion. No DOM, credentials, network or storage. */
 (() => {
   "use strict";
-  const VERSION = "3.0.0";
+  const VERSION = "3.1.0";
   if (globalThis.GoodogConversationData?.version === VERSION) return;
   const object = value => value && typeof value === "object" && !Array.isArray(value);
   const array = value => Array.isArray(value) ? value : [];
@@ -169,16 +169,31 @@
     const date = options.exportedAt || new Date().toISOString();
     const url = safeUrl(options.url) || (/^[a-zA-Z0-9-]+$/u.test(id) ? `https://chatgpt.com/c/${id}` : "");
     const translate = value => globalThis.GoodogI18n?.translate(value, options.language) || value;
-    const lines = [`GOODOG CHAT EXPORT · ${VERSION}`, `${translate("Название:")} ${title}`, ...(url ? [`URL: ${url}`] : []), `${translate("Экспорт:")} ${date}`, `${translate("Текстовых сообщений:")} ${records.length}`,
-      `${translate("Источник:")} ${translate(object(conversation.mapping) ? "JSON разговора · текущая ветка по parent/current_node" : "JSON разговора · последовательность messages")}`,
-      `${translate("Охват:")} ${translate(coverage === "complete" ? "полная полученная ветка JSON" : "частичный — см. предупреждения")}`,
+    const metadataText = value => String(value).replace(/\r?\n/gu, " ").replace(/[\\`*_{}\[\]()#+.!<>|~-]/gu, "\\$&");
+    const lines = [`# ${metadataText(title)}`, "", `> Goodog Chat Export ${VERSION} · Markdown`, "",
+      ...(url ? [`- URL: <${url}>`] : []), `- ${translate("Экспорт:")} ${metadataText(date)}`, `- ${translate("Текстовых сообщений:")} ${records.length}`,
+      `- ${translate("Источник:")} ${metadataText(translate(object(conversation.mapping) ? "JSON разговора · текущая ветка по parent/current_node" : "JSON разговора · последовательность messages"))}`,
+      `- ${translate("Охват:")} ${metadataText(translate(coverage === "complete" ? "полная полученная ветка JSON" : "частичный — см. предупреждения"))}`, "",
       translate("Сохранён весь доступный текст сообщений, включая прерванные ответы. Код, Markdown и текстовые подписи сохранены."),
       `${translate("Сообщений без доступного текста пропущено:")} ${stats.nonTextMessages}. ${translate("Изображения и вложения не скачиваются; заглушки файлов не добавляются.")}`,
-      translate("Другие ветки и скрытые инструкции/рассуждения в TXT не включаются."),
-      ...[...warnings].map(warning => `${translate("Предупреждение:")} ${translate(warning)}`), "", "=".repeat(72), ""];
-    const body = records.map((record, index) => `[${String(index + 1).padStart(4, "0")}] ${record.role === "user" ? translate("Пользователь") : record.role === "assistant" ? "ChatGPT" : record.author.replace(/^Инструмент/u, translate("Инструмент"))}\n\n${record.text}`).join(`\n\n${"-".repeat(72)}\n\n`);
+      translate("Другие ветки и скрытые инструкции/рассуждения в MD не включаются."),
+      ...[...warnings].map(warning => `> **${translate("Предупреждение:")}** ${metadataText(translate(warning))}`), "", "---", ""];
+    function messageMarkdown(text) {
+      // A stopped answer can end inside a code fence. Close that fence so the
+      // following message heading is not swallowed; the message bytes stay intact.
+      let open = null;
+      for (const match of text.matchAll(/^ {0,3}(`{3,}|~{3,})([^\n]*)$/gm)) {
+        const fence = match[1], tail = match[2];
+        if (!open) {
+          if (fence[0] === "`" && tail.includes("`")) continue;
+          open = fence;
+        } else if (fence[0] === open[0] && fence.length >= open.length && !tail.trim()) open = null;
+      }
+      return open ? `${text}\n${open}` : text;
+    }
+    const body = records.map((record, index) => `## ${index + 1}. ${metadataText(record.role === "user" ? translate("Пользователь") : record.role === "assistant" ? "ChatGPT" : record.author.replace(/^Инструмент/u, translate("Инструмент")))}\n\n${messageMarkdown(record.text)}`).join("\n\n---\n\n");
     const safeTitle = [...title.replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/gu, "_")].slice(0, 100).join("").replace(/[. ]+$/gu, "") || "Conversation";
-    return { filename: `ChatGPT-${safeTitle}-${date.replace(/[:.]/gu, "-")}.txt`, text: lines.join("\n") + body + "\n", count: records.length, warnings: [...warnings], coverage, stats };
+    return { filename: `ChatGPT-${safeTitle}-${date.replace(/[:.]/gu, "-")}.md`, text: lines.join("\n") + body + "\n", count: records.length, warnings: [...warnings], coverage, stats };
   }
 
   globalThis.GoodogConversationData = Object.freeze({ version: VERSION, getConversations, listConversations, exportConversation, branchMessages, visible, messageText, safeUrl });

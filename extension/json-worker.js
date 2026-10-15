@@ -1,5 +1,5 @@
 "use strict";
-importScripts("i18n.js", "conversation-data.js", "archive-data.js", "zip-store.js", "archive-builder.js");
+importScripts("i18n.js", "vendor/marked.umd.js", "markdown-renderer.js", "conversation-data.js", "archive-data.js", "zip-store.js", "archive-builder.js");
 
 let file = null;
 let entries = [];
@@ -53,7 +53,7 @@ async function exportArchive(conversation, data, ticket) {
   const result = await builder.finish();
   const warnings = [...descriptor.warnings];
   if (result.archive.missing) warnings.push(language === "en" ? "Some attachments are missing. See manifest.json in the ZIP." : "Часть вложений отсутствует. Подробности — в manifest.json внутри ZIP.");
-  return { format: "zip", blob: result.blob, filename: transcript.filename.replace(/\.txt$/iu, ".zip"), count: transcript.count,
+  return { format: "zip", blob: result.blob, filename: transcript.filename.replace(/\.md$/iu, ".zip"), count: transcript.count,
     warnings, coverage: descriptor.coverage, stats: transcript.stats, archive: result.archive };
 }
 
@@ -80,7 +80,7 @@ async function indexFile(source, requestId, ticket) {
           if (position < 3 && [239, 187, 191].includes(byte) || whitespace(byte)) continue;
           if (byte === 91) { mode = "array"; continue; }
           if (byte === 123) { mode = "single"; start = position; depth = 1; continue; }
-          throw new Error("Выберите JSON из распакованного экспорта. ZIP, HTML и TXT здесь не поддерживаются.");
+          throw new Error("Выберите JSON из распакованного экспорта. ZIP, HTML и MD здесь не поддерживаются.");
         }
         if (finished) { if (!whitespace(byte)) throw new Error("После JSON найдены посторонние данные."); continue; }
         if (mode === "array" && depth === 0) {
@@ -142,7 +142,7 @@ self.onmessage = async ({ data }) => {
       if (ticket !== generation) return;
       const conversation = GoodogConversationData.getConversations(parsed)[entry.innerIndex];
       const result = data.format === "zip" ? await exportArchive(conversation, data, ticket)
-        : { ...GoodogConversationData.exportConversation(conversation, { includeLinks: data.includeLinks !== false, language: data.language }), format: "txt" };
+        : { ...GoodogConversationData.exportConversation(conversation, { includeLinks: data.includeLinks !== false, language: data.language }), format: "md" };
       if (ticket !== generation) return;
       postMessage({ type: "EXPORTED", requestId, ...result });
       return;

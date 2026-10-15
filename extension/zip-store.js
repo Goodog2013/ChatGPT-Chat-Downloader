@@ -1,7 +1,7 @@
 /* Dependency-free ZIP32 STORE writer. No network, storage or executable archive content. */
 (() => {
   "use strict";
-  const VERSION = "3.0.0";
+  const VERSION = "3.1.0";
   if (globalThis.GoodogZip?.version === VERSION) return;
   const MAX_BYTES = 1536 * 1024 * 1024, MAX_FILE_BYTES = 256 * 1024 * 1024, MAX_FILES = 65535;
   const encoder = new TextEncoder();

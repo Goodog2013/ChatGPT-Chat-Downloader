@@ -1,7 +1,7 @@
-/* Goodog Chat Export 3.0.0. Same-origin read-only JSON and attachment resolvers. */
+/* Goodog Chat Export 3.1.0. Same-origin read-only JSON and attachment resolvers. */
 (() => {
   "use strict";
-  const VERSION = "3.0.0";
+  const VERSION = "3.1.0";
   const previous = globalThis.GoodogChatExport;
   if (previous?.version === VERSION) return;
   if (previous && ["collecting", "saving"].includes(previous.getState?.().phase)) {
@@ -25,7 +25,7 @@
   function allArchiveWarnings(job) { return [...new Set([...job.warnings, ...job.archiveWarnings])]; }
 
   // Coverage concerns the received current branch, not image binaries or other branches.
-  // Keep transport evidence separate from serializer warnings and final TXT counts.
+  // Keep transport evidence separate from serializer warnings and final MD counts.
   function evidence(job) {
     return { pages: job.pages, receivedCount: job.receivedCount,
       format: job.outputFormat, language: job.language, archiveAvailable: job.archiveAvailable,
@@ -88,7 +88,7 @@
       id: globalThis.crypto?.randomUUID?.() || `gce-${Date.now()}-${++counter}`, phase: "collecting", count: 0,
       message: "Получаю JSON текущего разговора…", warnings: new Set(), archiveWarnings: new Set(), coverage: "unknown", error: null,
       includeLinks: options?.includeLinks !== false, autoDownload: options?.autoDownload !== false,
-      outputFormat: options?.format === "txt" ? "txt" : "zip", language: options?.language === "ru" ? "ru" : "en",
+      outputFormat: options?.format === "md" ? "md" : "zip", language: options?.language === "ru" ? "ru" : "en",
       startedAt: new Date().toISOString(), deadline: performance.now() + duration,
       controller: new AbortController(), running: true, cancelled: false, timedOut: false, contextChanged: false,
       data: null, text: null, filename: null, pages: 0, receivedCount: 0, receivedBytes: 0,
@@ -374,15 +374,15 @@
           job.archiveAvailable = descriptor.messages.length > 0 || attachments.size > 0;
           for (const message of descriptor.warnings || []) if (typeof message === "string") job.archiveWarnings.add(message);
           if (descriptor.coverage !== "complete") job.coverage = "partial";
-        } catch { job.archiveWarnings.add(job.language === "en" ? "The ZIP descriptor could not be prepared. TXT export remains available." : "Не удалось подготовить список файлов ZIP. Текстовый экспорт остаётся доступен."); }
-      } else if (job.outputFormat === "zip") job.archiveWarnings.add(job.language === "en" ? "The archive module is not loaded. Update the extension; TXT remains available." : "Модуль архива не загружен. Обновите расширение; TXT остаётся доступен.");
+        } catch { job.archiveWarnings.add(job.language === "en" ? "The ZIP descriptor could not be prepared. MD export remains available." : "Не удалось подготовить список файлов ZIP. Текстовый экспорт остаётся доступен."); }
+      } else if (job.outputFormat === "zip") job.archiveWarnings.add(job.language === "en" ? "The archive module is not loaded. Update the extension; MD remains available." : "Модуль архива не загружен. Обновите расширение; MD остаётся доступен.");
       const result = globalThis.GoodogConversationData.exportConversation(job.data, { ...meta, allowEmpty: true,
         coverage: job.coverage, warnings: [...job.warnings] });
       if (!result || typeof result.text !== "string" || !Number.isSafeInteger(result.count) || result.count < 0 || result.count === 0 && !job.archiveAvailable) throw failure("EMPTY", "JSON не содержит доступных сообщений текущей ветки. Используйте официальный экспорт данных.");
       job.count = result.count;
       job.text = result.text || (job.language === "en" ? "ChatGPT conversation export\nNo readable text is available. See the archive for attachments.\n" : "Экспорт разговора ChatGPT\nДоступного текстового содержимого нет. Вложения сохранены отдельно в архиве.\n");
-      job.textFilename = String(result.filename || `ChatGPT-${job.conversationId}.txt`);
-      job.archiveFilename = job.textFilename.replace(/\.txt$/iu, "") + ".zip";
+      job.textFilename = String(result.filename || `ChatGPT-${job.conversationId}.md`);
+      job.archiveFilename = job.textFilename.replace(/\.md$/iu, "") + ".zip";
       job.filename = job.outputFormat === "zip" ? job.archiveFilename : job.textFilename;
       job.stats = safeStats(result.stats);
       for (const message of result.warnings || []) if (typeof message === "string") warn(job, message);
@@ -398,7 +398,7 @@
         ? `Все страницы текущей ветки получены (${job.pages} стр.; начало и конец подтверждены API).`
         : "Дерево JSON получено; связи текущей ветки проверены конвертером.";
       job.message = job.cancelled ? `Сбор отменён (${job.pages} стр.). Частичный результат доступен для ручного сохранения.`
-        : job.coverage === "complete" ? `${completeDescription} В TXT: ${job.count} сообщений.`
+        : job.coverage === "complete" ? `${completeDescription} В MD: ${job.count} сообщений.`
           : job.transportComplete ? job.format === "messages"
             ? `Все страницы JSON получены (${job.pages} стр.). Связи или полнота текста требуют проверки — см. предупреждения. Доступно ручное скачивание.`
             : "Дерево JSON получено, но полнота восстановленной ветки не подтверждена. Проверьте предупреждения; доступно ручное скачивание."
@@ -429,7 +429,7 @@
   function prepareArchive() {
     synchronizeContext();
     const job = current;
-    if (!job || job.running || !job.finalized || !job.archiveAvailable || !job.archiveDescriptor) throw new Error("Архив текущего разговора не подготовлен. Повторите получение JSON или сохраните доступный TXT.");
+    if (!job || job.running || !job.finalized || !job.archiveAvailable || !job.archiveDescriptor) throw new Error("Архив текущего разговора не подготовлен. Повторите получение JSON или сохраните доступный MD.");
     if (job.resolving) throw new Error("Дождитесь завершения текущей группы вложений.");
     job.assetCancelled = false;
     job.archiveText ||= JSON.stringify(job.archiveDescriptor);
@@ -584,13 +584,13 @@
     if (!job || result.jobId !== job.id || !["saving", "saved", "error"].includes(result.phase) || job.running || !job.finalized) return getState();
     if (result.progressOnly && job.phase !== "saving") return getState();
     if (Object.prototype.hasOwnProperty.call(result, "archive")) job.archiveProgress = safeArchiveProgress(result.archive);
-    if (result.format === "zip" || result.format === "txt") job.outputFormat = result.format;
+    if (result.format === "zip" || result.format === "md") job.outputFormat = result.format;
     if (result.phase === "error") {
       job.phase = "error"; job.error = String(result.error || result.message || "Не удалось сохранить файл.");
       job.message = "Ошибка сохранения. Текст остаётся в памяти; можно повторить скачивание.";
     } else {
       job.phase = result.phase; job.error = null;
-      job.message = String(result.message || (result.phase === "saving" ? "Сохраняю локальный TXT-файл…" : "TXT-файл сохранён."));
+      job.message = String(result.message || (result.phase === "saving" ? "Сохраняю локальный MD-файл…" : "MD-файл сохранён."));
     }
     if (result.filename) job.filename = String(result.filename);
     return getState();

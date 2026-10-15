@@ -34,7 +34,7 @@ function appendText(job, text) {
 function textBlob(job) {
   if (job.pendingHighSurrogate) job.parts.push(job.pendingHighSurrogate);
   job.pendingHighSurrogate = "";
-  return new Blob(job.parts, { type: "text/plain;charset=utf-8" });
+  return new Blob(job.parts, { type: "text/markdown;charset=utf-8" });
 }
 
 function assetUrl(value, origin) {
@@ -119,7 +119,7 @@ async function handle(message) {
     const origin = new URL(message.origin || "https://chatgpt.com").origin;
     if (!["https://chatgpt.com", "https://chat.openai.com"].includes(origin)) throw new Error("Unsupported conversation origin.");
     jobs.set(token, { token, tabId: message.tabId, jobId: message.jobId, filename: message.filename,
-      format: zip ? "zip" : "txt", language: message.language === "ru" ? "ru" : "en", origin,
+      format: zip ? "zip" : "md", language: message.language === "ru" ? "ru" : "en", origin,
       parts: zip ? [] : ["\uFEFF"], textChars: 0, archiveParts: [], archiveChars: 0,
       pendingHighSurrogate: "", builder: null, url: null, touchedAt: Date.now(), downloadId: null,
       controllers: new Set(), cancelled: false, busy: false });

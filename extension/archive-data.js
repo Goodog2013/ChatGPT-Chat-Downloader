@@ -1,7 +1,7 @@
 /* Whitelisted current-branch archive conversion. No DOM, credentials, network or storage. */
 (() => {
   "use strict";
-  const VERSION = "3.0.0";
+  const VERSION = "3.1.0";
   if (globalThis.GoodogArchiveData?.version === VERSION) return;
   const object = value => value && typeof value === "object" && !Array.isArray(value);
   const array = value => Array.isArray(value) ? value : [];
@@ -214,18 +214,38 @@
       attachments: array(descriptor.attachments).map(attachment => ({ key: string(attachment.key), id: string(attachment.id), kind: ["image", "audio", "video"].includes(attachment.kind) ? attachment.kind : "file", name: string(attachment.name), mime: safeMime(attachment.mime), messageIds: array(attachment.messageIds).filter(value => typeof value === "string") })) };
   }
   const escape = value => String(value ?? "").replace(/[&<>"']/gu, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-  function localPath(value) {
-    if (typeof value !== "string" || !value.startsWith("attachments/") || /[\\\u0000-\u001f\u007f]/u.test(value)) return "";
+  function localPath(value, prefix = "attachments/") {
+    if (typeof value !== "string" || !value.startsWith(prefix) || /[\\\u0000-\u001f\u007f]/u.test(value)) return "";
     const parts = value.split("/");
     if (parts.some(part => !part || part === "." || part === ".." || /[<>:"|?*]/u.test(part))) return "";
     return parts.map(part => encodeURIComponent(part)).join("/");
   }
   function renderHtml(descriptor, manifest = {}) {
+    const originalAttachments = array(descriptor.attachments);
     descriptor = publicConversation(descriptor);
     const language = languageOf(descriptor.language), text = labels[language], files = new Map();
     const entries = Array.isArray(manifest) ? manifest : array(manifest.files || manifest.attachments);
     for (const file of entries) if (file && typeof file.key === "string") files.set(file.key, file);
     const attachments = new Map(array(descriptor.attachments).map(attachment => [attachment.key, attachment]));
+    const markdownSources = new Map(), markdownNames = new Map();
+    for (const attachment of originalAttachments) {
+      const file = files.get(attachment.key), path = localPath(file?.path);
+      if (file?.status !== "saved" || !path) continue;
+      const value = { href: path, image: ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "image/bmp"].includes(safeMime(file.mime || attachment.mime)) };
+      if (attachment.source?.value) markdownSources.set(attachment.source.value, value);
+      for (const name of new Set([attachment.name, file.name].filter(Boolean))) {
+        if (markdownNames.has(name)) markdownNames.set(name, null);
+        else markdownNames.set(name, value);
+      }
+    }
+    const markdown = GoodogMarkdown.createRenderer({ resolveLocal(href) {
+      if (markdownSources.has(href)) return markdownSources.get(href);
+      let decoded;
+      try { decoded = decodeURIComponent(href); } catch { return null; }
+      if (markdownSources.has(decoded)) return markdownSources.get(decoded);
+      if (/^[a-z][a-z0-9+.-]*:/iu.test(decoded) || decoded.startsWith("//")) return null;
+      return markdownNames.get(decoded.replace(/^\.\//u, "")) || null;
+    } });
     const coverageText = coverageLabels[language], summary = object(manifest.summary) ? manifest.summary : {};
     const count = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
     const total = count(summary.total) ?? Math.max(attachments.size, files.size);
@@ -250,11 +270,13 @@
       if (kind === "image" && ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif", "image/bmp"].includes(mime)) preview = `<img src="${escape(path)}" alt="${name}" loading="lazy">`;
       else if (kind === "audio") preview = `<audio controls preload="none" src="${escape(path)}"></audio>`;
       else if (kind === "video") preview = `<video controls preload="none" src="${escape(path)}"></video>`;
-      return `<li><a href="${escape(path)}" download>${name}</a>${preview}</li>`;
+      const markdownPreview = localPath(file.previewPath, "previews/");
+      const openMarkdown = markdownPreview ? ` · <a href="${escape(markdownPreview)}">${language === "ru" ? "Открыть Markdown" : "Open Markdown"}</a>` : file.previewError ? `<small class="meta"> — ${escape(file.previewError)}</small>` : "";
+      return `<li><a href="${escape(path)}" download>${name}</a>${openMarkdown}${preview}</li>`;
     }
     const warnings = [...array(descriptor.warnings), ...array(manifest.warnings)].filter(value => typeof value === "string").map(warning => translate(warning, language));
-    const body = array(descriptor.messages).map((message, index) => `<article><header><b>${index + 1}. ${escape(authorLabel(message))}</b>${message.createdAt ? `<time>${escape(message.createdAt)}</time>` : ""}</header>${message.text ? `<pre class="message">${escape(message.text)}</pre>` : ""}${message.attachments?.length ? `<ul class="attachments">${message.attachments.map(attachmentHtml).join("")}</ul>` : ""}</article>`).join("\n");
-    return `<!doctype html>\n<html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; media-src 'self' file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><title>${escape(descriptor.title)}</title><style>body{max-width:1000px;margin:40px auto;padding:0 20px;background:#fafafa;color:#20242b;font:16px/1.55 system-ui,sans-serif}h1{overflow-wrap:anywhere}article{background:white;border:1px solid #dce0e6;border-radius:12px;margin:22px 0;padding:20px}header{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}time,.meta{color:#5d6570;font-size:13px}.message{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;margin:18px 0 0}.attachments{padding-left:20px}.attachments li{margin:14px 0;overflow-wrap:anywhere}img,video{display:block;max-width:100%;max-height:700px;margin-top:12px}audio{display:block;max-width:100%;margin-top:12px}.warning,.unavailable{color:#8a4300}a{color:#1858a8}</style></head><body><h1>${escape(descriptor.title)}</h1><p class="meta">${escape(text.exported)}: ${escape(descriptor.exportedAt)} · ${escape(text.scope)}</p>${coverageHeader}<p class="meta">${escape(text.omitted)} ${escape(text.media)}</p>${warnings.length ? `<ul class="warning">${warnings.map(warning => `<li>${escape(warning)}</li>`).join("")}</ul>` : ""}${body}</body></html>\n`;
+    const body = array(descriptor.messages).map((message, index) => `<article><header><b>${index + 1}. ${escape(authorLabel(message))}</b>${message.createdAt ? `<time>${escape(message.createdAt)}</time>` : ""}</header>${message.text ? `<div class="message markdown">${markdown(message.text)}</div>` : ""}${message.attachments?.length ? `<ul class="attachments">${message.attachments.map(attachmentHtml).join("")}</ul>` : ""}</article>`).join("\n");
+    return `<!doctype html>\n<html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' file:; media-src 'self' file:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'"><meta name="referrer" content="no-referrer"><title>${escape(descriptor.title)}</title><style>body{max-width:1000px;margin:40px auto;padding:0 20px;background:#fafafa;color:#20242b;font:16px/1.55 system-ui,sans-serif}h1{overflow-wrap:anywhere}article{background:white;border:1px solid #dce0e6;border-radius:12px;margin:22px 0;padding:20px}header{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}time,.meta{color:#5d6570;font-size:13px}.message{margin:18px 0 0}${GoodogMarkdown.styles}.attachments{padding-left:20px}.attachments li{margin:14px 0;overflow-wrap:anywhere}img,video{display:block;max-width:100%;max-height:700px;margin-top:12px}audio{display:block;max-width:100%;margin-top:12px}.warning,.unavailable{color:#8a4300}a{color:#1858a8}</style></head><body><h1>${escape(descriptor.title)}</h1><p class="meta">${escape(text.exported)}: ${escape(descriptor.exportedAt)} · ${escape(text.scope)}</p>${coverageHeader}<p class="meta"><a href="chat.md" download>Markdown (.md)</a> · <a href="conversation.json" download>JSON</a></p><p class="meta">${escape(text.omitted)} ${escape(text.media)}</p>${warnings.length ? `<ul class="warning">${warnings.map(warning => `<li>${escape(warning)}</li>`).join("")}</ul>` : ""}${body}</body></html>\n`;
   }
   globalThis.GoodogArchiveData = Object.freeze({ version: VERSION, prepare, publicConversation, renderHtml });
 })();

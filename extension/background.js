@@ -26,7 +26,7 @@ async function ensureExporter(tabId) {
     const task = (async () => {
       const [existing] = await chrome.scripting.executeScript({
         target: { tabId }, world: "ISOLATED",
-        func: () => globalThis.GoodogChatExport?.version === "3.0.0",
+        func: () => globalThis.GoodogChatExport?.version === "3.1.0",
       });
       if (!existing?.result) await chrome.scripting.executeScript({ target: { tabId }, world: "ISOLATED", files: ["i18n.js", "conversation-data.js", "archive-data.js", "exporter.js"] });
     })().finally(() => { if (injections.get(tabId) === task) injections.delete(tabId); });
@@ -58,7 +58,7 @@ async function ensureOffscreen() {
   if (!creatingOffscreen) {
     creatingOffscreen = chrome.offscreen.createDocument({
       url: "offscreen.html", reasons: ["BLOBS"],
-      justification: "Create the user's local TXT or ZIP conversation export and release temporary memory after saving.",
+      justification: "Create the user's local MD or ZIP conversation export and release temporary memory after saving.",
     }).finally(() => { creatingOffscreen = null; });
   }
   await creatingOffscreen;
@@ -66,21 +66,21 @@ async function ensureOffscreen() {
 
 async function blobCommand(type, fields = {}) {
   const response = await chrome.runtime.sendMessage({ target: "offscreen", type, ...fields });
-  if (!response?.ok) throw new Error(response?.error || "Не удалось подготовить TXT-файл.");
+  if (!response?.ok) throw new Error(response?.error || "Не удалось подготовить MD-файл.");
   return response;
 }
 
-function safeFilename(value, format = "txt") {
-  let name = String(value || "ChatGPT.txt").normalize("NFC")
+function safeFilename(value, format = "md") {
+  let name = String(value || "ChatGPT.md").normalize("NFC")
     .replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/gu, "_")
     .replace(/[\ud800-\udfff]/gu, "")
     .replace(/[\u202a-\u202e\u2066-\u2069]/gu, "")
     .replace(/[. ]+$/gu, "").trim();
-  name = name.replace(/\.(?:txt|zip)$/iu, "");
+  name = name.replace(/\.(?:md|txt|zip)$/iu, "");
   name = [...name].slice(0, 150).join("").replace(/[. ]+$/gu, "");
   if (!name) name = "ChatGPT";
   if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/iu.test(name)) name = `ChatGPT_${name}`;
-  return `${name}.${format === "zip" ? "zip" : "txt"}`;
+  return `${name}.${format === "zip" ? "zip" : "md"}`;
 }
 
 async function reportDownload(tabId, jobId, result) {
@@ -98,7 +98,7 @@ async function finishDownload(downloadId, state, downloadError) {
   try {
     if (state === "complete") await reportDownload(job.tabId, job.jobId, { phase: "saved", filename: job.filename, format: job.format,
       ...(job.archive ? { archive: { ...job.archive, stage: "complete" } } : {}),
-      message: job.format === "zip" ? job.archive?.missing ? "ZIP сохранён. Некоторые вложения недоступны — проверьте manifest.json в архиве." : "ZIP с чатом и доступными вложениями сохранён." : "TXT-файл сохранён. Можно экспортировать другой чат." });
+      message: job.format === "zip" ? job.archive?.missing ? "ZIP сохранён. Некоторые вложения недоступны — проверьте manifest.json в архиве." : "ZIP с чатом и доступными вложениями сохранён." : "MD-файл сохранён. Можно экспортировать другой чат." });
     else await reportDownload(job.tabId, job.jobId, { phase: "error", message: "Сохранение прервано. Собранный чат можно сохранить повторно.", error: String(downloadError || "Скачивание прервано.") });
   } finally { await blobCommand("GCE_BLOB_RELEASE", { token: job.token }); }
 }
@@ -109,7 +109,7 @@ async function saveExport(tabId, expectedJobId, options = {}) {
   if (state.phase === "collecting") throw new Error("Дождитесь сбора истории или остановите его для частичного сохранения.");
   if (state.phase === "saving") return;
   if (!state.count && !state.archiveAvailable) throw new Error("Пока нет сообщений для сохранения.");
-  const format = (options.format || state.format) === "zip" ? "zip" : "txt";
+  const format = (options.format || state.format) === "zip" ? "zip" : "md";
   const language = (options.language || state.language) === "ru" ? "ru" : "en";
   const jobId = state.jobId;
   const key = `${tabId}:${jobId}`;
@@ -122,7 +122,7 @@ async function saveExport(tabId, expectedJobId, options = {}) {
     try {
       await reportDownload(tabId, jobId, { phase: "saving", format, language,
         archive: format === "zip" ? { stage: "preparing", total: 0, downloaded: 0, missing: 0, bytes: 0, coverage: "unknown" } : null,
-        message: format === "zip" ? "Подготовка ZIP с чатом и вложениями…" : "Подготовка TXT-файла…" });
+        message: format === "zip" ? "Подготовка ZIP с чатом и вложениями…" : "Подготовка MD-файла…" });
       const meta = await invoke(tabId, "prepareExport", [{ language }]);
       if (meta.jobId !== jobId || !Number.isSafeInteger(meta.chars) || meta.chars < 1 || meta.chars > 134217728) throw new Error("Чат изменился или слишком велик для сохранения за один раз.");
       const filename = safeFilename(meta.filename, format);
@@ -176,7 +176,7 @@ async function saveExport(tabId, expectedJobId, options = {}) {
       const { url, archive } = await blobCommand("GCE_BLOB_FINISH", { token });
       if (operation.cancelled) throw new Error("Archive cancelled.");
       await reportDownload(tabId, jobId, { phase: "saving", progressOnly: true, filename, ...(archive ? { archive: { ...archive, stage: "complete" } } : {}),
-        message: format === "zip" ? "Выберите папку и подтвердите сохранение ZIP." : "Выберите папку и подтвердите сохранение TXT." });
+        message: format === "zip" ? "Выберите папку и подтвердите сохранение ZIP." : "Выберите папку и подтвердите сохранение MD." });
       if (operation.cancelled) throw new Error("Archive cancelled.");
       const downloadId = await chrome.downloads.download({ url, filename, saveAs: true, conflictAction: "uniquify" });
       operation.downloadId = downloadId;
@@ -239,7 +239,7 @@ async function handle(message, sender) {
   await ensureExporter(tabId);
   if (message.type === "GCE_START") {
     const state = await invoke(tabId, "start", [{ includeLinks: message.options?.includeLinks !== false, autoDownload: true, maxDurationMs: 480000,
-      format: message.options?.format === "txt" ? "txt" : "zip", language: message.options?.language === "ru" ? "ru" : "en" }]);
+      format: message.options?.format === "md" ? "md" : "zip", language: message.options?.language === "ru" ? "ru" : "en" }]);
     return { ok: true, state };
   }
   if (message.type === "GCE_CANCEL") {
@@ -266,9 +266,9 @@ async function handle(message, sender) {
     if (state.phase === "collecting") throw new Error("Сначала остановите сбор истории.");
     if (state.phase === "saving") return { ok: true, state };
     if (!state.count && !state.archiveAvailable) throw new Error("Нет сообщений для сохранения.");
-    const format = message.options?.format === "txt" ? "txt" : "zip";
+    const format = message.options?.format === "md" ? "md" : "zip";
     void saveExport(tabId, state.jobId, { format, language: message.options?.language }).catch(error => reportDownload(tabId, state.jobId, { phase: "error", message: String(error?.message || error), error: "Сохранение не началось." }));
-    return { ok: true, state: { ...state, phase: "saving", format, message: format === "zip" ? "Подготовка ZIP с чатом и вложениями…" : "Подготовка TXT-файла…" } };
+    return { ok: true, state: { ...state, phase: "saving", format, message: format === "zip" ? "Подготовка ZIP с чатом и вложениями…" : "Подготовка MD-файла…" } };
   }
   return { ok: true, state: await invoke(tabId, "getState") };
 }

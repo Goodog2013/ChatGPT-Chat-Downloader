@@ -14,7 +14,8 @@ FILES = [
     "manifest.json", "background.js", "offscreen.html", "offscreen.js",
     "i18n.js", "exporter.js", "conversation-data.js", "archive-data.js",
     "archive-builder.js", "zip-store.js", "json-worker.js", "popup.html",
-    "popup.css", "popup.js", "icons/icon16.png", "icons/icon32.png",
+    "popup.css", "popup.js", "markdown-renderer.js", "vendor/marked.umd.js",
+    "vendor/marked-LICENSE.txt", "icons/icon16.png", "icons/icon32.png",
     "icons/icon48.png", "icons/icon128.png",
 ]
 HELPERS = ["Install-Chrome.bat", "Install-Edge.bat", "Установить-Chrome.bat", "Установить-Edge.bat"]
