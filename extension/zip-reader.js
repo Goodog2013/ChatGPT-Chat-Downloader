@@ -54,7 +54,17 @@
       const official = entries.filter(item => item.name.toLowerCase() === "conversations.json");
       if (official.length > 1) throw new Error("More than one conversations.json was found. Select one ChatGPT export ZIP.");
       let jsonEntries = official;
-      if (!jsonEntries.length) jsonEntries = entries.filter(item => /^conversations-\d+\.json$/iu.test(item.name)).sort((a, b) => a.path.localeCompare(b.path));
+      if (!jsonEntries.length) {
+        jsonEntries = entries.flatMap(item => {
+          const match = /^conversations-(\d+)\.json$/iu.exec(item.name);
+          return match ? [{ item, index: BigInt(match[1]) }] : [];
+        }).sort((a, b) => {
+          // Sort the basename's index, not directory names or rounded Numbers.
+          if (a.index !== b.index) return a.index < b.index ? -1 : 1;
+          // Keep distinct paths/zero-padded names, with a locale-independent tie-break.
+          return a.item.path < b.item.path ? -1 : a.item.path > b.item.path ? 1 : 0;
+        }).map(({ item }) => item);
+      }
       if (!jsonEntries.length) {
         jsonEntries = entries.filter(item => item.name.toLowerCase() === "conversation.json");
         if (jsonEntries.length > 1 && !jsonEntries.every(item => /(?:^|\/)chats\/\d+\/conversation\.json$/iu.test(item.path))) throw new Error("Multiple conversation.json files are ambiguous. Select one export ZIP.");
