@@ -34,4 +34,4 @@ Import limits: ZIP up to 8 GiB, 50,000 entries, 512 MiB of combined conversation
 
 Marked 18.1.1 (MIT) and zip.js 2.23.0 (BSD-3-Clause) are bundled locally with licenses. ChatGPT's undocumented JSON routes may change; the official account export is the fallback source.
 
-At the user's request, validation covers syntax and installer-package integrity only. Test suites, browser/real-account probes and execution on Windows have not been performed.
+The published v3.2.0 release was validated for syntax and installer-package integrity only. Synthetic ZIP import regression tests and a Chromium extension test are now available; see [tests/README.md](tests/README.md) for commands and coverage. They do not use a real ChatGPT account or personal exports and do not validate Windows installation.

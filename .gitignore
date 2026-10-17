@@ -6,3 +6,4 @@ __pycache__/
 conversations*.json
 logs/
 *.log
+node_modules/
